@@ -1,4 +1,4 @@
-package Plantdetection
+package com.PlantDetection
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver

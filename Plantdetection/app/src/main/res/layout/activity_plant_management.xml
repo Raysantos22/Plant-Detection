@@ -50,7 +50,7 @@
                 android:layout_marginStart="16dp"
                 android:layout_marginEnd="16dp"
                 android:gravity="center"
-                android:text="No plants added yet. Tap the + button to add your first plant."
+                android:text=""
                 android:textColor="#757575"
                 android:textSize="16sp"
                 android:visibility="gone"

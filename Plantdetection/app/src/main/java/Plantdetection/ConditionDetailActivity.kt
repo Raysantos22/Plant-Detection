@@ -1,6 +1,5 @@
 package com.PlantDetection
 
-import Plantdetection.PlantConditionData
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.Context

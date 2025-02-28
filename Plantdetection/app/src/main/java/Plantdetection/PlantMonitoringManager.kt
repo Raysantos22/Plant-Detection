@@ -1,6 +1,5 @@
 package com.PlantDetection
 
-import Plantdetection.NotificationReceiver
 import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager

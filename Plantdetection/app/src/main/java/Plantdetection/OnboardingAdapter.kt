@@ -1,4 +1,4 @@
-package com.Plantdetection
+package com.PlantDetection
 
 import android.view.View
 import android.widget.TextView

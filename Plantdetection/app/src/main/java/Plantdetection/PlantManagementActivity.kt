@@ -1,6 +1,8 @@
-package Plantdetection
+package com.PlantDetection
+
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -21,6 +23,10 @@ import java.util.*
 /**
  * Activity for managing plants and viewing the calendar of care events
  */
+
+/**
+ * Activity for managing plants and viewing the calendar of care events
+ */
 class PlantManagementActivity : AppCompatActivity() {
 
     private lateinit var plantDatabaseManager: PlantDatabaseManager
@@ -32,10 +38,10 @@ class PlantManagementActivity : AppCompatActivity() {
     private lateinit var selectedDateHeader: TextView
     private lateinit var noPlantsMessage: TextView
     private lateinit var noEventsMessage: TextView
-    
+
     private lateinit var selectedDate: Date
     private var selectedPlantId: String? = null
-    
+
     private val plantAdapter by lazy {
         PlantAdapter(
             plants = plantDatabaseManager.getAllPlants(),
@@ -43,38 +49,43 @@ class PlantManagementActivity : AppCompatActivity() {
             onItemLongClick = { plant -> showPlantOptionsDialog(plant) }
         )
     }
-    
+
     private val eventAdapter by lazy {
         PlantCareEventAdapter(
             events = emptyList(),
             onItemClick = { event -> showEventDetailsDialog(event) },
-            onCheckboxClick = { event -> onEventCompleted(event) }
+            onCheckboxClick = { event -> onEventCompleted(event) },
+            onRescheduleClick = { event -> showRescheduleDialog(event) },
+            onRescanClick = { event, plantType -> startRescanActivity(event, plantType) }
         )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_plant_management)
-        
+
         // Initialize plant database manager
         plantDatabaseManager = PlantDatabaseManager(this)
-        
+
         // Initialize views
         initViews()
-        
+
         // Set up calendar
         setupCalendar()
-        
+
         // Set up plants list
         setupPlantsList()
-        
+
         // Set up today's events
         setupTodayEvents()
-        
+
         // Set up listeners
         setupListeners()
+
+        // Handle direct opening for a specific plant
+        handleDirectOpen()
     }
-    
+
     private fun initViews() {
         calendarView = findViewById(R.id.calendarView)
         eventsRecyclerView = findViewById(R.id.eventsRecyclerView)
@@ -85,27 +96,27 @@ class PlantManagementActivity : AppCompatActivity() {
         noPlantsMessage = findViewById(R.id.noPlantsMessage)
         noEventsMessage = findViewById(R.id.noEventsMessage)
     }
-    
+
     private fun setupCalendar() {
         // Set initial selected date to today
         selectedDate = Date()
         updateSelectedDateHeader()
-        
+
         // Set calendar listener
         calendarView.setOnDateChangeListener { _, year, month, dayOfMonth ->
             val calendar = Calendar.getInstance()
             calendar.set(year, month, dayOfMonth)
             selectedDate = calendar.time
-            
+
             updateSelectedDateHeader()
             loadEventsForSelectedDate()
         }
     }
-    
+
     private fun setupPlantsList() {
         plantsRecyclerView.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         plantsRecyclerView.adapter = plantAdapter
-        
+
         // Check if plants exist
         if (plantAdapter.itemCount == 0) {
             noPlantsMessage.visibility = View.VISIBLE
@@ -115,22 +126,36 @@ class PlantManagementActivity : AppCompatActivity() {
             plantsRecyclerView.visibility = View.VISIBLE
         }
     }
-    
+
     private fun setupTodayEvents() {
         eventsRecyclerView.layoutManager = LinearLayoutManager(this)
         eventsRecyclerView.adapter = eventAdapter
-        
+
         // Load today's events
         loadEventsForSelectedDate()
     }
-    
+
     private fun setupListeners() {
         // Add plant button
         addPlantButton.setOnClickListener {
             showAddPlantDialog()
         }
     }
-    
+
+    private fun handleDirectOpen() {
+        // Check if we should open a specific plant
+        val openPlantId = intent.getStringExtra("OPEN_PLANT_ID")
+        if (openPlantId != null) {
+            val plant = plantDatabaseManager.getPlant(openPlantId)
+            if (plant != null) {
+                selectedPlantId = plant.id
+                plantAdapter.updateSelectedPlantId(selectedPlantId)
+                loadEventsForSelectedDate()
+                showPlantDetailsDialog(plant)
+            }
+        }
+    }
+
     private fun loadEventsForSelectedDate() {
         val calendar = Calendar.getInstance()
         calendar.time = selectedDate
@@ -139,13 +164,13 @@ class PlantManagementActivity : AppCompatActivity() {
         calendar.set(Calendar.SECOND, 0)
         calendar.set(Calendar.MILLISECOND, 0)
         val startDate = calendar.time
-        
+
         calendar.set(Calendar.HOUR_OF_DAY, 23)
         calendar.set(Calendar.MINUTE, 59)
         calendar.set(Calendar.SECOND, 59)
         calendar.set(Calendar.MILLISECOND, 999)
         val endDate = calendar.time
-        
+
         // Get events for selected date, filtered by selected plant if applicable
         val events = plantDatabaseManager.getCareEventsInDateRange(startDate, endDate)
             .let { eventList ->
@@ -154,10 +179,10 @@ class PlantManagementActivity : AppCompatActivity() {
                 } ?: eventList
             }
             .sortedBy { it.date }
-        
+
         // Update events list
         (eventsRecyclerView.adapter as PlantCareEventAdapter).updateEvents(events)
-        
+
         // Show message if no events
         if (events.isEmpty()) {
             noEventsMessage.visibility = View.VISIBLE
@@ -167,46 +192,149 @@ class PlantManagementActivity : AppCompatActivity() {
             eventsRecyclerView.visibility = View.VISIBLE
         }
     }
-    
+
     private fun updateSelectedDateHeader() {
         val dateFormat = SimpleDateFormat("EEEE, MMMM d, yyyy", Locale.getDefault())
         selectedDateHeader.text = dateFormat.format(selectedDate)
     }
-    
+
     private fun onPlantSelected(plant: PlantDatabaseManager.Plant) {
         // Toggle selection
         selectedPlantId = if (selectedPlantId == plant.id) null else plant.id
-        
+
         // Update adapter to reflect selection state
         plantAdapter.updateSelectedPlantId(selectedPlantId)
-        
+
         // Reload events for selected date filtered by selected plant
         loadEventsForSelectedDate()
-        
+
         // Show plant details if selected
         selectedPlantId?.let {
             showPlantDetailsDialog(plant)
         }
     }
-    
+
     private fun onEventCompleted(event: PlantDatabaseManager.PlantCareEvent) {
-        // Mark event as completed
-        plantDatabaseManager.markCareEventCompleted(event.id)
-        
+        // Check if event is from today or past, not future
+        val today = Calendar.getInstance()
+        today.set(Calendar.HOUR_OF_DAY, 0)
+        today.set(Calendar.MINUTE, 0)
+        today.set(Calendar.SECOND, 0)
+        today.set(Calendar.MILLISECOND, 0)
+
+        val eventDate = Calendar.getInstance()
+        eventDate.time = event.date
+        eventDate.set(Calendar.HOUR_OF_DAY, 0)
+        eventDate.set(Calendar.MINUTE, 0)
+        eventDate.set(Calendar.SECOND, 0)
+        eventDate.set(Calendar.MILLISECOND, 0)
+
+        // Only allow completing events for today or past
+        if (eventDate.after(today)) {
+            Toast.makeText(this, "Future events cannot be marked as complete", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        // Toggle completion status
+        plantDatabaseManager.toggleEventCompletion(event.id)
+
         // Reload events
         loadEventsForSelectedDate()
-        
+
         // Show confirmation toast
-        Toast.makeText(this, "Task marked as complete", Toast.LENGTH_SHORT).show()
+        val statusMessage = if (!event.completed) {
+            "Task marked as complete"
+        } else {
+            "Task marked as incomplete"
+        }
+
+        Toast.makeText(this, statusMessage, Toast.LENGTH_SHORT).show()
+
+        // If this was a treatment event, ask if they want to rescan the plant
+        if (event.eventType.equals("Treatment", ignoreCase = true) && !event.completed) {
+            val plant = plantDatabaseManager.getPlant(event.plantId) ?: return
+            askForRescan(event, plant.type)
+        }
     }
-    
+
+    private fun askForRescan(event: PlantDatabaseManager.PlantCareEvent, plantType: String) {
+        AlertDialog.Builder(this)
+            .setTitle("Rescan Plant?")
+            .setMessage("Would you like to rescan your plant to check if its condition has improved?")
+            .setPositiveButton("Rescan") { _, _ ->
+                startRescanActivity(event, plantType)
+            }
+            .setNegativeButton("Later", null)
+            .show()
+    }
+
+    private fun startRescanActivity(event: PlantDatabaseManager.PlantCareEvent, plantType: String) {
+        val intent = Intent(this, MainActivity::class.java).apply {
+            putExtra("SELECTED_VEGETABLE", plantType)
+            putExtra("SELECTED_PLANT_ID", event.plantId)
+        }
+        startActivity(intent)
+    }
+
+    private fun showRescheduleDialog(event: PlantDatabaseManager.PlantCareEvent) {
+        // Show date picker dialog to reschedule the event
+        val calendar = Calendar.getInstance()
+        calendar.time = event.date
+
+        val datePickerDialog = DatePickerDialog(
+            this,
+            { _, year, month, dayOfMonth ->
+                calendar.set(Calendar.YEAR, year)
+                calendar.set(Calendar.MONTH, month)
+                calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+                // Show time picker
+                val timePickerDialog = TimePickerDialog(
+                    this,
+                    { _, hourOfDay, minute ->
+                        calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                        calendar.set(Calendar.MINUTE, minute)
+
+                        // Update event with new date
+                        val updatedEvent = event.copy(date = calendar.time)
+                        if (plantDatabaseManager.updatePlantCareEvent(updatedEvent)) {
+                            Toast.makeText(
+                                this,
+                                "Event rescheduled for ${SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(calendar.time)}",
+                                Toast.LENGTH_SHORT
+                            ).show()
+
+                            // Reload events
+                            loadEventsForSelectedDate()
+                        } else {
+                            Toast.makeText(this, "Failed to reschedule event", Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    calendar.get(Calendar.HOUR_OF_DAY),
+                    calendar.get(Calendar.MINUTE),
+                    true
+                )
+                timePickerDialog.show()
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+
+        // Set min date to today
+        val today = Calendar.getInstance()
+        datePickerDialog.datePicker.minDate = today.timeInMillis
+
+        datePickerDialog.show()
+    }
+
     private fun showAddPlantDialog() {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_plant, null)
-        
+
         val nameInput = dialogView.findViewById<android.widget.EditText>(R.id.plantNameInput)
         val typeSpinner = dialogView.findViewById<android.widget.Spinner>(R.id.plantTypeSpinner)
         val wateringFrequencyInput = dialogView.findViewById<android.widget.EditText>(R.id.wateringFrequencyInput)
-        
+
         AlertDialog.Builder(this)
             .setTitle("Add New Plant")
             .setView(dialogView)
@@ -214,14 +342,14 @@ class PlantManagementActivity : AppCompatActivity() {
                 val name = nameInput.text.toString().trim()
                 val type = typeSpinner.selectedItem.toString()
                 val wateringFrequencyText = wateringFrequencyInput.text.toString().trim()
-                
+
                 if (name.isEmpty()) {
                     Toast.makeText(this, "Plant name is required", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                
+
                 val wateringFrequency = if (wateringFrequencyText.isEmpty()) 1 else wateringFrequencyText.toIntOrNull() ?: 1
-                
+
                 // Create plant
                 val plantId = "plant_${System.currentTimeMillis()}"
                 val plant = PlantDatabaseManager.Plant(
@@ -231,101 +359,221 @@ class PlantManagementActivity : AppCompatActivity() {
                     createdDate = Date(),
                     wateringFrequency = wateringFrequency
                 )
-                
+
                 // Add to database
                 if (plantDatabaseManager.addPlant(plant)) {
                     // Schedule first watering
                     val calendar = Calendar.getInstance()
                     calendar.add(Calendar.DAY_OF_MONTH, wateringFrequency)
                     plantDatabaseManager.scheduleWatering(plantId, calendar.time, "Initial watering")
-                    
+
                     // Update plants list
                     refreshPlantsList()
-                    
+
                     Toast.makeText(this, "Plant added successfully", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this, "Failed to add plant", Toast.LENGTH_SHORT).show()
                 }
-                
+
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
-    
+
     private fun showPlantDetailsDialog(plant: PlantDatabaseManager.Plant) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_plant_details, null)
-        
+
         val plantNameText = dialogView.findViewById<TextView>(R.id.plantNameText)
         val plantTypeText = dialogView.findViewById<TextView>(R.id.plantTypeText)
         val plantStatusText = dialogView.findViewById<TextView>(R.id.plantStatusText)
         val nextWateringText = dialogView.findViewById<TextView>(R.id.nextWateringText)
         val waterNowButton = dialogView.findViewById<android.widget.Button>(R.id.waterNowButton)
         val scanButton = dialogView.findViewById<android.widget.Button>(R.id.scanButton)
-        
+        val addTreatmentButton = dialogView.findViewById<android.widget.Button>(R.id.addTreatmentButton)
+
         // Set plant details
         plantNameText.text = plant.name
         plantTypeText.text = plant.type
         plantStatusText.text = plant.currentCondition ?: "No recent scan"
-        
+
         // Set next watering date
         val dateFormat = SimpleDateFormat("EEE, MMM d, yyyy", Locale.getDefault())
-        nextWateringText.text = plant.nextWateringDate?.let { 
-            "Next watering: ${dateFormat.format(it)}" 
+        nextWateringText.text = plant.nextWateringDate?.let {
+            "Next watering: ${dateFormat.format(it)}"
         } ?: "No scheduled watering"
-        
+
         // Set button listeners
         waterNowButton.setOnClickListener {
             // Schedule watering for today
             plantDatabaseManager.scheduleWatering(plant.id, Date(), "Manual watering")
-            
+
             // Reload events
             loadEventsForSelectedDate()
-            
+
             Toast.makeText(this, "Watering scheduled for today", Toast.LENGTH_SHORT).show()
         }
-        
+
         scanButton.setOnClickListener {
             // Open scan activity with this plant's information
-            val intent = Intent(this, VegetableSelectionActivity::class.java)
+            val intent = Intent(this, MainActivity::class.java)
+            intent.putExtra("SELECTED_VEGETABLE", plant.type)
             intent.putExtra("SELECTED_PLANT_ID", plant.id)
             startActivity(intent)
         }
-        
+
+        // Add treatment button - only show if a condition is present that's not healthy
+        addTreatmentButton.visibility = if (plant.currentCondition != null &&
+            !plant.currentCondition.startsWith("Healthy")) {
+            View.VISIBLE
+        } else {
+            View.GONE
+        }
+
+        addTreatmentButton.setOnClickListener {
+            // Get the condition data to create appropriate treatment tasks
+            val conditionName = plant.currentCondition ?: return@setOnClickListener
+            val condition = PlantConditionData.conditions[conditionName]
+
+            if (condition != null) {
+                showAddTreatmentTasksDialog(plant, condition)
+            } else {
+                Toast.makeText(this, "No treatment data available for this condition", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         AlertDialog.Builder(this)
             .setTitle("Plant Details")
             .setView(dialogView)
             .setPositiveButton("Close", null)
             .show()
     }
-    
+
+    private fun showAddTreatmentTasksDialog(
+        plant: PlantDatabaseManager.Plant,
+        condition: PlantConditionData.PlantCondition
+    ) {
+        // Create a multi-select dialog of treatment tasks
+        val taskNames = condition.treatmentTasks.map { it.taskName }.toTypedArray()
+        val checkedItems = BooleanArray(taskNames.size) { true } // Default all selected
+
+        AlertDialog.Builder(this)
+            .setTitle("Add Treatment Tasks")
+            .setMultiChoiceItems(taskNames, checkedItems) { _, which, isChecked ->
+                checkedItems[which] = isChecked
+            }
+            .setPositiveButton("Add Tasks") { _, _ ->
+                var tasksAdded = 0
+
+                // For each selected task, create a care event
+                for (i in checkedItems.indices) {
+                    if (checkedItems[i]) {
+                        val task = condition.treatmentTasks[i]
+
+                        // Create event for this task
+                        val eventId = "treatment_${plant.id}_${System.currentTimeMillis() + i}"
+                        val today = Calendar.getInstance()
+
+                        val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
+                            id = eventId,
+                            plantId = plant.id,
+                            eventType = "Treatment",
+                            date = today.time,
+                            conditionName = condition.name,
+                            notes = "${task.taskName}: ${task.description}\n\nMaterials: ${task.materials.joinToString(", ")}\n\nInstructions:\n${task.instructions.joinToString("\n- ", "- ")}",
+                            completed = false
+                        )
+
+                        if (plantDatabaseManager.addPlantCareEvent(treatmentEvent)) {
+                            tasksAdded++
+
+                            // Schedule follow-up task if interval > 0
+                            if (task.scheduleInterval > 0) {
+                                val followUpDate = Calendar.getInstance()
+                                followUpDate.add(Calendar.DAY_OF_MONTH, task.scheduleInterval)
+
+                                val followUpId = "followup_${plant.id}_${System.currentTimeMillis() + i}"
+                                val followUpEvent = PlantDatabaseManager.PlantCareEvent(
+                                    id = followUpId,
+                                    plantId = plant.id,
+                                    eventType = "Treatment",
+                                    date = followUpDate.time,
+                                    conditionName = condition.name,
+                                    notes = "Follow-up: ${task.taskName}\n\n${task.description}\n\nMaterials: ${task.materials.joinToString(", ")}\n\nInstructions:\n${task.instructions.joinToString("\n- ", "- ")}",
+                                    completed = false
+                                )
+
+                                plantDatabaseManager.addPlantCareEvent(followUpEvent)
+                            }
+                        }
+                    }
+                }
+
+                // Reload events
+                loadEventsForSelectedDate()
+
+                Toast.makeText(this, "$tasksAdded treatment tasks added", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun showPlantOptionsDialog(plant: PlantDatabaseManager.Plant) {
-        val options = arrayOf("Edit Plant", "Schedule Watering", "Delete Plant")
-        
+        val options = arrayOf("Edit Plant", "Schedule Watering", "Apply Treatment", "Delete Plant")
+
         AlertDialog.Builder(this)
             .setTitle(plant.name)
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> showEditPlantDialog(plant)
                     1 -> showScheduleWateringDialog(plant)
-                    2 -> confirmDeletePlant(plant)
+                    2 -> showTreatmentOptionsDialog(plant)
+                    3 -> confirmDeletePlant(plant)
                 }
             }
             .show()
     }
-    
+
+    private fun showTreatmentOptionsDialog(plant: PlantDatabaseManager.Plant) {
+        // First check if we have a condition
+        if (plant.currentCondition == null) {
+            AlertDialog.Builder(this)
+                .setTitle("No Condition Data")
+                .setMessage("Please scan your plant first to detect any conditions requiring treatment.")
+                .setPositiveButton("Scan Now") { _, _ ->
+                    val intent = Intent(this, MainActivity::class.java)
+                    intent.putExtra("SELECTED_VEGETABLE", plant.type)
+                    intent.putExtra("SELECTED_PLANT_ID", plant.id)
+                    startActivity(intent)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+            return
+        }
+
+        // Get the condition data
+        val conditionName = plant.currentCondition
+        val condition = PlantConditionData.conditions[conditionName]
+
+        if (condition != null) {
+            showAddTreatmentTasksDialog(plant, condition)
+        } else {
+            Toast.makeText(this, "No treatment data available for this condition", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun showEditPlantDialog(plant: PlantDatabaseManager.Plant) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_plant, null)
-        
+
         val nameInput = dialogView.findViewById<android.widget.EditText>(R.id.plantNameInput)
         val wateringFrequencyInput = dialogView.findViewById<android.widget.EditText>(R.id.wateringFrequencyInput)
         val notesInput = dialogView.findViewById<android.widget.EditText>(R.id.plantNotesInput)
-        
+
         // Set current values
         nameInput.setText(plant.name)
         wateringFrequencyInput.setText(plant.wateringFrequency.toString())
         notesInput.setText(plant.notes)
-        
+
         AlertDialog.Builder(this)
             .setTitle("Edit Plant")
             .setView(dialogView)
@@ -333,40 +581,40 @@ class PlantManagementActivity : AppCompatActivity() {
                 val name = nameInput.text.toString().trim()
                 val wateringFrequencyText = wateringFrequencyInput.text.toString().trim()
                 val notes = notesInput.text.toString().trim()
-                
+
                 if (name.isEmpty()) {
                     Toast.makeText(this, "Plant name is required", Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
-                
+
                 val wateringFrequency = if (wateringFrequencyText.isEmpty()) 1 else wateringFrequencyText.toIntOrNull() ?: 1
-                
+
                 // Update plant
                 val updatedPlant = plant.copy(
                     name = name,
                     wateringFrequency = wateringFrequency,
                     notes = notes
                 )
-                
+
                 if (plantDatabaseManager.updatePlant(updatedPlant)) {
                     // Update plants list
                     refreshPlantsList()
-                    
+
                     Toast.makeText(this, "Plant updated successfully", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this, "Failed to update plant", Toast.LENGTH_SHORT).show()
                 }
-                
+
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
-    
+
     private fun showScheduleWateringDialog(plant: PlantDatabaseManager.Plant) {
         // Create calendar for date picker
         val calendar = Calendar.getInstance()
-        
+
         // Show date picker
         val datePickerDialog = DatePickerDialog(
             this,
@@ -374,32 +622,49 @@ class PlantManagementActivity : AppCompatActivity() {
                 calendar.set(Calendar.YEAR, year)
                 calendar.set(Calendar.MONTH, month)
                 calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
-                
-                // Create watering event
-                plantDatabaseManager.scheduleWatering(
-                    plantId = plant.id,
-                    wateringDate = calendar.time,
-                    notes = "Scheduled watering"
-                )
-                
-                // Reload events
-                loadEventsForSelectedDate()
-                
-                // Show confirmation
-                Toast.makeText(
+
+                // Show time picker
+                val timePickerDialog = TimePickerDialog(
                     this,
-                    "Watering scheduled for ${SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(calendar.time)}",
-                    Toast.LENGTH_SHORT
-                ).show()
+                    { _, hourOfDay, minute ->
+                        calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                        calendar.set(Calendar.MINUTE, minute)
+
+                        // Create watering event
+                        plantDatabaseManager.scheduleWatering(
+                            plantId = plant.id,
+                            wateringDate = calendar.time,
+                            notes = "Scheduled watering"
+                        )
+
+                        // Reload events
+                        loadEventsForSelectedDate()
+
+                        // Show confirmation
+                        Toast.makeText(
+                            this,
+                            "Watering scheduled for ${SimpleDateFormat("MMM d, yyyy HH:mm", Locale.getDefault()).format(calendar.time)}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    calendar.get(Calendar.HOUR_OF_DAY),
+                    calendar.get(Calendar.MINUTE),
+                    true
+                )
+                timePickerDialog.show()
             },
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
         )
-        
+
+        // Set min date to today
+        val today = Calendar.getInstance()
+        datePickerDialog.datePicker.minDate = today.timeInMillis
+
         datePickerDialog.show()
     }
-    
+
     private fun confirmDeletePlant(plant: PlantDatabaseManager.Plant) {
         AlertDialog.Builder(this)
             .setTitle("Delete Plant")
@@ -410,82 +675,173 @@ class PlantManagementActivity : AppCompatActivity() {
                     if (selectedPlantId == plant.id) {
                         selectedPlantId = null
                     }
-                    
+
                     // Update plants list
                     refreshPlantsList()
-                    
+
                     // Reload events
                     loadEventsForSelectedDate()
-                    
+
                     Toast.makeText(this, "Plant deleted successfully", Toast.LENGTH_SHORT).show()
                 } else {
                     Toast.makeText(this, "Failed to delete plant", Toast.LENGTH_SHORT).show()
                 }
-                
+
                 dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
             .show()
     }
-    
+
     private fun showEventDetailsDialog(event: PlantDatabaseManager.PlantCareEvent) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_event_details, null)
-        
+
         val eventTypeText = dialogView.findViewById<TextView>(R.id.eventTypeText)
         val eventDateText = dialogView.findViewById<TextView>(R.id.eventDateText)
         val eventPlantText = dialogView.findViewById<TextView>(R.id.eventPlantText)
         val eventNotesText = dialogView.findViewById<TextView>(R.id.eventNotesText)
         val eventStatusText = dialogView.findViewById<TextView>(R.id.eventStatusText)
-        val completeButton = dialogView.findViewById<android.widget.Button>(R.id.completeEventButton)
+        val completeButton =
+            dialogView.findViewById<android.widget.Button>(R.id.completeEventButton)
         val deleteButton = dialogView.findViewById<android.widget.Button>(R.id.deleteEventButton)
-        
+        val rescheduleButton =
+            dialogView.findViewById<android.widget.Button>(R.id.rescheduleEventButton)
+        val rescanButton = dialogView.findViewById<android.widget.Button>(R.id.rescanButton)
+
         // Get plant name
         val plant = plantDatabaseManager.getPlant(event.plantId)
         val plantName = plant?.name ?: "Unknown plant"
-        
+
         // Set event details
         eventTypeText.text = event.eventType
-        eventDateText.text = SimpleDateFormat("EEE, MMM d, yyyy - HH:mm", Locale.getDefault()).format(event.date)
+        eventDateText.text =
+            SimpleDateFormat("EEE, MMM d, yyyy - HH:mm", Locale.getDefault()).format(event.date)
         eventPlantText.text = plantName
         eventNotesText.text = if (event.notes.isNotEmpty()) event.notes else "No notes"
         eventStatusText.text = if (event.completed) "Completed" else "Pending"
-        
-        // Set button states
-        completeButton.isEnabled = !event.completed
-        
+
+        // Update button text based on current status
+        completeButton.text = if (event.completed) "Mark Incomplete" else "Mark Complete"
+
+        // Check if event is in the future
+        val today = Calendar.getInstance()
+        today.set(Calendar.HOUR_OF_DAY, 0)
+        today.set(Calendar.MINUTE, 0)
+        today.set(Calendar.SECOND, 0)
+        today.set(Calendar.MILLISECOND, 0)
+
+        val eventDate = Calendar.getInstance()
+        eventDate.time = event.date
+        eventDate.set(Calendar.HOUR_OF_DAY, 0)
+        eventDate.set(Calendar.MINUTE, 0)
+        eventDate.set(Calendar.SECOND, 0)
+        eventDate.set(Calendar.MILLISECOND, 0)
+
+        val isFutureEvent = eventDate.after(today)
+
+        // Disable complete button for future events
+        completeButton.isEnabled = !isFutureEvent || event.completed
+        if (isFutureEvent && !event.completed) {
+            completeButton.text = "Cannot complete future event"
+        }
+
+        // Only show reschedule for future events
+        rescheduleButton.visibility =
+            if (isFutureEvent && !event.completed) View.VISIBLE else View.GONE
+
+        // Only show rescan button for treatment events
+        rescanButton.visibility =
+            if (event.eventType.equals("Treatment", ignoreCase = true)) View.VISIBLE else View.GONE
+
         // Set button listeners
         completeButton.setOnClickListener {
-            onEventCompleted(event)
-            eventStatusText.text = "Completed"
-            completeButton.isEnabled = false
+            // Don't allow completing future events
+            if (isFutureEvent && !event.completed) {
+                Toast.makeText(this, "Cannot complete future events", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Toggle completion status
+            plantDatabaseManager.toggleEventCompletion(event.id)
+
+            // Update UI
+            loadEventsForSelectedDate()
+
+            // Update status text and button
+            val updatedEvent = plantDatabaseManager.getPlantCareEvent(event.id)
+            if (updatedEvent != null) {
+                eventStatusText.text = if (updatedEvent.completed) "Completed" else "Pending"
+                completeButton.text =
+                    if (updatedEvent.completed) "Mark Incomplete" else "Mark Complete"
+            }
+
+            // Show confirmation
+            val statusMessage = if (updatedEvent?.completed == true) {
+                "Task marked as complete"
+            } else {
+                "Task marked as incomplete"
+            }
+            Toast.makeText(this, statusMessage, Toast.LENGTH_SHORT).show()
+
+            // If this was a treatment event and now completed, ask if they want to rescan the plant
+            if (event.eventType.equals(
+                    "Treatment",
+                    ignoreCase = true
+                ) && updatedEvent?.completed == true
+            ) {
+                askForRescan(event, plant?.type ?: "")
+
+                // Close the dialog
+                (it.parent.parent.parent as android.app.Dialog).dismiss()
+            }
         }
-        
+
         deleteButton.setOnClickListener {
             // Delete event
             if (plantDatabaseManager.deletePlantCareEvent(event.id)) {
                 // Reload events
                 loadEventsForSelectedDate()
-                
+
                 Toast.makeText(this, "Event deleted successfully", Toast.LENGTH_SHORT).show()
-                
+
                 // Dismiss dialog
                 (it.parent.parent.parent as android.app.Dialog).dismiss()
             } else {
                 Toast.makeText(this, "Failed to delete event", Toast.LENGTH_SHORT).show()
             }
         }
-        
+
+        rescheduleButton.setOnClickListener {
+            // Show reschedule dialog
+            showRescheduleDialog(event)
+
+            // Dismiss current dialog
+            (it.parent.parent.parent as android.app.Dialog).dismiss()
+        }
+
+        rescanButton.setOnClickListener {
+            // Start rescan activity
+            if (plant != null) {
+                startRescanActivity(event, plant.type)
+
+                // Dismiss dialog
+                (it.parent.parent.parent as android.app.Dialog).dismiss()
+            } else {
+                Toast.makeText(this, "Plant information not available", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         AlertDialog.Builder(this)
             .setTitle("Event Details")
             .setView(dialogView)
             .setPositiveButton("Close", null)
             .show()
     }
-    
+
     private fun refreshPlantsList() {
         // Update adapter with fresh data
         plantAdapter.updatePlants(plantDatabaseManager.getAllPlants())
-        
+
         // Update visibility
         if (plantAdapter.itemCount == 0) {
             noPlantsMessage.visibility = View.VISIBLE
@@ -495,7 +851,7 @@ class PlantManagementActivity : AppCompatActivity() {
             plantsRecyclerView.visibility = View.VISIBLE
         }
     }
-    
+
     override fun onResume() {
         super.onResume()
         // Refresh data in case it was changed in other activities

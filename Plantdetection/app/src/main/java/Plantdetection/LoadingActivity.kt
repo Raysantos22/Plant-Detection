@@ -1,4 +1,4 @@
-package com.Plantdetection
+package com.PlantDetection
 
 import android.content.Intent
 import android.os.Bundle

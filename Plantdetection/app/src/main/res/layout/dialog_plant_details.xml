@@ -109,5 +109,16 @@
             android:background="@drawable/green_button_background"
             android:text="Scan Plant"
             android:textColor="@android:color/white" />
+
+
+        <Button
+            android:id="@+id/addTreatmentButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:background="@drawable/green_button_background"
+            android:text="Scan Plant"
+            android:textColor="@android:color/white" />
     </LinearLayout>
 </LinearLayout>

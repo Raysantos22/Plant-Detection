@@ -104,6 +104,19 @@
             app:layout_constraintStart_toEndOf="@+id/setReminderButton"
             app:layout_constraintTop_toTopOf="@+id/setReminderButton" />
 
+        <!-- Add to Calendar Button - Only shown for one-time scans -->
+        <Button
+            android:id="@+id/addToCalendarButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="@drawable/green_button_background"
+            android:text="Add to My Plants"
+            android:textColor="@android:color/white"
+            android:visibility="gone"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/monitoringDescription" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <View

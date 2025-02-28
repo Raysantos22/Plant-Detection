@@ -1,8 +1,8 @@
 package com.PlantDetection
 
-import Plantdetection.PlantConditionData
 import android.Manifest
 import android.app.Dialog
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
@@ -11,6 +11,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -28,7 +29,8 @@ import androidx.core.content.ContextCompat
 import com.PlantDetection.Constants.LABELS_PATH
 import com.PlantDetection.Constants.MODEL_PATH
 import com.PlantDetection.databinding.ActivityMainBinding
-import com.PlantDetection.databinding.DialogPlantInfoBinding
+import java.util.Calendar
+import java.util.Date
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -36,13 +38,16 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     private lateinit var binding: ActivityMainBinding
     private val isFrontCamera = false
     private var selectedVegetable: String? = null
-    private var lastDetectedCondition: String? = null
+    private var selectedPlantId: String? = null
     private var infoDialog: Dialog? = null
 
     // Scanning control variables
     private var isScanning = false
     private var currentDetection: BoundingBox? = null
     private val MIN_CONFIDENCE_THRESHOLD = 0.65f // Minimum confidence to enable capture
+
+    // Plant database integration
+    private lateinit var plantDatabaseManager: PlantDatabaseManager
 
     private var preview: Preview? = null
     private var imageAnalyzer: ImageAnalysis? = null
@@ -57,8 +62,12 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Initialize plant database manager
+        plantDatabaseManager = PlantDatabaseManager(this)
+
         // Get the selected vegetable from the intent
         selectedVegetable = intent.getStringExtra("SELECTED_VEGETABLE")
+        selectedPlantId = intent.getStringExtra("SELECTED_PLANT_ID")
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
@@ -104,12 +113,12 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         isScanning = !isScanning
         binding.apply {
             if (isScanning) {
-                scanButton.text = "Stop Scanning"
+                scanButton.text = getString(R.string.stop_scanning)
                 scanButton.setBackgroundColor(ContextCompat.getColor(baseContext, R.color.orange))
                 scanStatusText.text = "Scanning..."
                 scanStatusText.setTextColor(ContextCompat.getColor(baseContext, R.color.orange))
             } else {
-                scanButton.text = "Start Scanning"
+                scanButton.text = getString(R.string.start_scanning)
                 scanButton.setBackgroundColor(ContextCompat.getColor(baseContext, R.color.app_dark_green))
                 scanStatusText.text = "Not scanning"
                 scanStatusText.setTextColor(ContextCompat.getColor(baseContext, R.color.gray))
@@ -136,8 +145,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     toggleScanning()
                 }
 
-                // Save the detection
-                saveDetection(detection)
+                // If we have a plant ID, update the plant's condition
+                if (selectedPlantId != null) {
+                    updatePlantCondition(selectedPlantId!!, detection.clsName)
+                }
 
                 // Show info dialog
                 showPlantInfoDialog(detection.clsName, true)
@@ -149,67 +160,58 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
     }
 
-    private fun saveDetection(detection: BoundingBox) {
-        // Save detection to local database or preferences
-        val sharedPrefs = getSharedPreferences("PlantMonitoring", MODE_PRIVATE)
-        val editor = sharedPrefs.edit()
+    private fun updatePlantCondition(plantId: String, conditionName: String) {
+        val plant = plantDatabaseManager.getPlant(plantId)
+        plant?.let {
+            // Update plant condition
+            val updatedPlant = it.copy(
+                currentCondition = conditionName,
+                lastScannedDate = Date()
+            )
 
-        // Create unique identifier for this detection
-        val detectionId = "detection_${System.currentTimeMillis()}"
+            // Save to database
+            if (plantDatabaseManager.updatePlant(updatedPlant)) {
+                // Create a scan event
+                val eventId = "scan_${plantId}_${System.currentTimeMillis()}"
+                val scanEvent = PlantDatabaseManager.PlantCareEvent(
+                    id = eventId,
+                    plantId = plantId,
+                    eventType = "Scan",
+                    date = Date(),
+                    conditionName = conditionName,
+                    notes = "Condition detected: $conditionName",
+                    completed = true
+                )
 
-        // Save basic detection info
-        editor.putString("${detectionId}_condition", detection.clsName)
-        editor.putString("${detectionId}_date", java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date()))
-        editor.putString("${detectionId}_vegetable", selectedVegetable)
+                // Save event
+                plantDatabaseManager.addPlantCareEvent(scanEvent)
 
-        // Add to list of detections
-        val detectionsList = sharedPrefs.getStringSet("saved_detections", HashSet<String>()) ?: HashSet()
-        val updatedList = HashSet(detectionsList)
-        updatedList.add(detectionId)
-        editor.putStringSet("saved_detections", updatedList)
+                // If not healthy, create treatment event
+                if (!conditionName.startsWith("Healthy")) {
+                    val treatmentId = "treatment_${plantId}_${System.currentTimeMillis()}"
+                    val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
+                        id = treatmentId,
+                        plantId = plantId,
+                        eventType = "Treatment",
+                        date = Date(),
+                        conditionName = conditionName,
+                        notes = "Treatment needed for $conditionName",
+                        completed = false
+                    )
 
-        // Set up initial monitoring status
-        editor.putLong("${detectionId}_next_check", System.currentTimeMillis() + getCheckIntervalForCondition(detection.clsName))
+                    // Save treatment event
+                    plantDatabaseManager.addPlantCareEvent(treatmentEvent)
+                }
 
-        editor.apply()
-
-        // Schedule notification for next check
-        scheduleCheckNotification(detectionId, detection.clsName)
-
-        Toast.makeText(this, "Detection saved for monitoring", Toast.LENGTH_SHORT).show()
-    }
-
-    private fun getCheckIntervalForCondition(conditionName: String): Long {
-        // Define check intervals based on condition (in milliseconds)
-        return when {
-            conditionName.startsWith("Healthy") -> 24 * 60 * 60 * 1000 // 24 hours for healthy plants
-            else -> 12 * 60 * 60 * 1000 // 12 hours for diseased/pest conditions
+                Toast.makeText(this, "Plant condition updated", Toast.LENGTH_SHORT).show()
+            }
         }
-    }
-
-    private fun scheduleCheckNotification(detectionId: String, conditionName: String) {
-        // Use WorkManager to schedule notifications
-        // This is a simplified example - in a real app, you'd implement WorkManager
-        val title = if (conditionName.startsWith("Healthy")) {
-            "Time to water your ${selectedVegetable}"
-        } else {
-            "Check your ${selectedVegetable} for ${conditionName}"
-        }
-
-        val message = if (conditionName.startsWith("Healthy")) {
-            "Your plant needs regular care to stay healthy!"
-        } else {
-            "Follow the treatment steps to address the ${conditionName} condition."
-        }
-
-        // Here you would schedule the actual notification with WorkManager
-        Toast.makeText(this, "Notification scheduled: $title", Toast.LENGTH_SHORT).show()
     }
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
-            cameraProvider = cameraProviderFuture.get()
+            cameraProvider  = cameraProviderFuture.get()
             bindCameraUseCases()
         }, ContextCompat.getMainExecutor(this))
     }
@@ -224,7 +226,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             .requireLensFacing(CameraSelector.LENS_FACING_BACK)
             .build()
 
-        preview = Preview.Builder()
+        preview =  Preview.Builder()
             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
             .setTargetRotation(rotation)
             .build()
@@ -292,21 +294,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         if (it[Manifest.permission.CAMERA] == true) { startCamera() }
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        detector?.close()
-        cameraExecutor.shutdown()
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (allPermissionsGranted()){
-            startCamera()
-        } else {
-            requestPermissionLauncher.launch(REQUIRED_PERMISSIONS)
-        }
-    }
-
     // Show dialog with plant condition information, prevention and treatment tips
     private fun showPlantInfoDialog(conditionName: String, showMonitoringOptions: Boolean = false) {
         // Get condition data
@@ -322,8 +309,9 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         val treatmentTipsContainer = dialogView.findViewById<LinearLayout>(R.id.treatmentTipsContainer)
         val closeButton = dialogView.findViewById<View>(R.id.closeButton)
         val monitoringSection = dialogView.findViewById<View>(R.id.monitoringSection)
-        val setReminderButton = dialogView.findViewById<Button>(R.id.setReminderButton)
-        val taskCompleteButton = dialogView.findViewById<Button>(R.id.taskCompleteButton)
+        val setReminderButton = dialogView.findViewById<android.widget.Button>(R.id.setReminderButton)
+        val taskCompleteButton = dialogView.findViewById<android.widget.Button>(R.id.taskCompleteButton)
+        val addToCalendarButton = dialogView.findViewById<android.widget.Button>(R.id.addToCalendarButton)
 
         conditionTitle.text = condition.name
         conditionDescription.text = condition.description
@@ -344,18 +332,19 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             treatmentTipsContainer.addView(tipView)
         }
 
-        // Show monitoring options if requested
-        if (showMonitoringOptions) {
+        // Show monitoring options if requested and we have a plant ID
+        if (showMonitoringOptions && selectedPlantId != null) {
             monitoringSection.visibility = View.VISIBLE
+            addToCalendarButton.visibility = View.GONE // Hide add to calendar if already a plant
 
             // Set reminder button
             setReminderButton.setOnClickListener {
-                showDateTimePicker(conditionName)
+                dialogShowDateTimePicker(conditionName)
             }
 
             // Task complete button
             taskCompleteButton.setOnClickListener {
-                markTaskComplete(conditionName)
+                markTreatmentComplete(conditionName)
                 Toast.makeText(this, "Task marked as complete", Toast.LENGTH_SHORT).show()
                 infoDialog?.dismiss()
 
@@ -364,6 +353,17 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     showResolutionConfirmationDialog()
                 }
             }
+        } else if (showMonitoringOptions) {
+            // This is a one-time scan, show option to add to my plants
+            monitoringSection.visibility = View.VISIBLE
+            setReminderButton.visibility = View.GONE
+            taskCompleteButton.visibility = View.GONE
+            addToCalendarButton.visibility = View.VISIBLE
+
+            // Add to calendar button
+            addToCalendarButton.setOnClickListener {
+                showAddToCalendarDialog(conditionName)
+            }
         } else {
             monitoringSection.visibility = View.GONE
         }
@@ -371,6 +371,13 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         // Set up close button
         closeButton.setOnClickListener {
             infoDialog?.dismiss()
+
+            // If we came from the Plant Management screen, go back there
+            if (selectedPlantId != null) {
+                val intent = Intent(this, PlantManagementActivity::class.java)
+                startActivity(intent)
+                finish()
+            }
         }
 
         // Create and show the dialog
@@ -381,71 +388,260 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         infoDialog?.show()
     }
+    private fun showAddToCalendarDialog(conditionName: String) {
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_to_calendar, null)
 
-    private fun showDateTimePicker(conditionName: String) {
-        // Show a date/time picker dialog to set a custom reminder
-        // This is a placeholder - you would implement a proper DateTimePicker
-        val calendar = java.util.Calendar.getInstance()
-        calendar.add(java.util.Calendar.HOUR, 24) // Default to 24 hours later
+        // Initialize views
+        val detectionResultText = dialogView.findViewById<TextView>(R.id.detectionResultText)
+        val plantNameInput = dialogView.findViewById<EditText>(R.id.plantNameInput)
+        val wateringFrequencyText = dialogView.findViewById<TextView>(R.id.wateringFrequencyText)
+        val decreaseFrequencyButton = dialogView.findViewById<Button>(R.id.decreaseFrequencyButton)
+        val increaseFrequencyButton = dialogView.findViewById<Button>(R.id.increaseFrequencyButton)
+        val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
+        val addPlantButton = dialogView.findViewById<Button>(R.id.addPlantButton)
 
-        // Save the custom reminder time
-        val sharedPrefs = getSharedPreferences("PlantMonitoring", MODE_PRIVATE)
-        val detectionsList = sharedPrefs.getStringSet("saved_detections", HashSet<String>()) ?: HashSet()
+        // Set initial values
+        detectionResultText.text = "Detected condition: $conditionName"
+        var wateringFrequency = 2 // Default to 2 days
+        wateringFrequencyText.text = "$wateringFrequency days"
 
-        // For simplicity, just update the most recent detection
-        if (detectionsList.isNotEmpty()) {
-            val latestDetection = detectionsList.maxByOrNull { it }
-            latestDetection?.let {
-                val editor = sharedPrefs.edit()
-                editor.putLong("${it}_next_check", calendar.timeInMillis)
-                editor.apply()
+        // Suggest a default name
+        val suggestedName = when {
+            conditionName.contains("Tomato") -> "Tomato Plant"
+            conditionName.contains("Eggplant") -> "Eggplant Plant"
+            else -> "Plant"
+        } + " " + (plantDatabaseManager.getAllPlants().size + 1)
+        plantNameInput.setText(suggestedName)
 
-                // Reschedule notification
-                scheduleCheckNotification(it, conditionName)
-
-                Toast.makeText(this, "Reminder set for ${java.text.SimpleDateFormat("MMM dd, HH:mm", java.util.Locale.getDefault()).format(calendar.time)}", Toast.LENGTH_SHORT).show()
+        // Set up buttons
+        decreaseFrequencyButton.setOnClickListener {
+            if (wateringFrequency > 1) {
+                wateringFrequency--
+                wateringFrequencyText.text = "$wateringFrequency days"
             }
         }
+
+        increaseFrequencyButton.setOnClickListener {
+            if (wateringFrequency < 14) {
+                wateringFrequency++
+                wateringFrequencyText.text = "$wateringFrequency days"
+            }
+        }
+
+        cancelButton.setOnClickListener {
+            // Just dismiss the dialog
+            infoDialog?.dismiss()
+        }
+
+        addPlantButton.setOnClickListener {
+            val plantName = plantNameInput.text.toString().trim()
+
+            if (plantName.isEmpty()) {
+                Toast.makeText(this, "Please enter a plant name", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            // Add the plant to the database
+            val plantType = when {
+                conditionName.contains("Tomato") -> "Tomato"
+                conditionName.contains("Eggplant") -> "Eggplant"
+                else -> selectedVegetable ?: "Tomato"
+            }
+
+            val plantId = plantDatabaseManager.addDetectionAsPlant(
+                plantName = plantName,
+                vegetableType = plantType,
+                conditionName = conditionName
+            )
+
+            if (plantId.isNotEmpty()) {
+                // Update the plant with the custom watering frequency
+                val plant = plantDatabaseManager.getPlant(plantId)
+                plant?.let {
+                    val updatedPlant = it.copy(wateringFrequency = wateringFrequency)
+                    plantDatabaseManager.updatePlant(updatedPlant)
+
+                    // Also update the next watering date
+                    val calendar = Calendar.getInstance()
+                    calendar.add(Calendar.DAY_OF_MONTH, wateringFrequency)
+                    calendar.set(Calendar.HOUR_OF_DAY, 9)
+                    calendar.set(Calendar.MINUTE, 0)
+                    calendar.set(Calendar.SECOND, 0)
+
+                    plantDatabaseManager.scheduleWatering(plantId, calendar.time, "Regular watering")
+
+                    // Test notification
+                    plantDatabaseManager.testNotification(plantId)
+                }
+
+                Toast.makeText(this, "Plant added to monitoring", Toast.LENGTH_SHORT).show()
+
+                // Dismiss dialogs
+                infoDialog?.dismiss()
+
+                // Go to plant management screen
+                val intent = Intent(this, PlantManagementActivity::class.java)
+                startActivity(intent)
+                finish()
+            } else {
+                Toast.makeText(this, "Failed to add plant", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Create and show the dialog
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        dialog.show()
+
+        // Replace current info dialog with this new one
+        infoDialog?.dismiss()
+        infoDialog = dialog
     }
 
-    private fun markTaskComplete(conditionName: String) {
-        // Mark the current task as complete and schedule the next check
-        val sharedPrefs = getSharedPreferences("PlantMonitoring", MODE_PRIVATE)
-        val detectionsList = sharedPrefs.getStringSet("saved_detections", HashSet<String>()) ?: HashSet()
+    private fun dialogShowDateTimePicker(conditionName: String) {
+        // Only proceed if we have a plant ID
+        if (selectedPlantId == null) return
 
-        // For simplicity, just update the most recent detection
-        if (detectionsList.isNotEmpty()) {
-            val latestDetection = detectionsList.maxByOrNull { it }
-            latestDetection?.let {
-                val editor = sharedPrefs.edit()
-                val nextCheckTime = System.currentTimeMillis() + getCheckIntervalForCondition(conditionName)
-                editor.putLong("${it}_next_check", nextCheckTime)
-                editor.putLong("${it}_last_completed", System.currentTimeMillis())
-                editor.apply()
+        // Show a date picker dialog
+        val calendar = Calendar.getInstance()
 
-                // Reschedule notification
-                scheduleCheckNotification(it, conditionName)
-            }
+        val datePickerDialog = android.app.DatePickerDialog(
+            this,
+            { _, year, month, dayOfMonth ->
+                calendar.set(Calendar.YEAR, year)
+                calendar.set(Calendar.MONTH, month)
+                calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+
+                // After date is selected, show time picker
+                val timePickerDialog = android.app.TimePickerDialog(
+                    this,
+                    { _, hourOfDay, minute ->
+                        calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                        calendar.set(Calendar.MINUTE, minute)
+
+                        // Create a treatment event
+                        val eventId = "treatment_${selectedPlantId}_${System.currentTimeMillis()}"
+                        val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
+                            id = eventId,
+                            plantId = selectedPlantId!!,
+                            eventType = "Treatment",
+                            date = calendar.time,
+                            conditionName = conditionName,
+                            notes = "Scheduled treatment for $conditionName",
+                            completed = false
+                        )
+
+                        // Save event
+                        plantDatabaseManager.addPlantCareEvent(treatmentEvent)
+
+                        Toast.makeText(
+                            this,
+                            "Treatment scheduled for ${java.text.SimpleDateFormat("MMM d, yyyy HH:mm",
+                                java.util.Locale.getDefault()).format(calendar.time)}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                    calendar.get(Calendar.HOUR_OF_DAY),
+                    calendar.get(Calendar.MINUTE),
+                    true
+                )
+                timePickerDialog.show()
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        )
+        datePickerDialog.show()
+    }
+
+    private fun markTreatmentComplete(conditionName: String) {
+        // Only proceed if we have a plant ID
+        if (selectedPlantId == null) return
+
+        // Find any incomplete treatment events for this condition
+        val plantEvents = plantDatabaseManager.getPlantCareEvents(selectedPlantId!!)
+        val treatmentEvent = plantEvents.firstOrNull {
+            it.eventType == "Treatment" &&
+                    it.conditionName == conditionName &&
+                    !it.completed
+        }
+
+        // If found, mark as complete
+        treatmentEvent?.let {
+            val updatedEvent = it.copy(completed = true)
+            plantDatabaseManager.updatePlantCareEvent(updatedEvent)
+        } ?: run {
+            // If no event found, create a new completed event
+            val eventId = "treatment_${selectedPlantId}_${System.currentTimeMillis()}"
+            val completedEvent = PlantDatabaseManager.PlantCareEvent(
+                id = eventId,
+                plantId = selectedPlantId!!,
+                eventType = "Treatment",
+                date = Date(),
+                conditionName = conditionName,
+                notes = "Treatment completed for $conditionName",
+                completed = true
+            )
+
+            plantDatabaseManager.addPlantCareEvent(completedEvent)
         }
     }
 
     private fun showResolutionConfirmationDialog() {
+        // Only proceed if we have a plant ID
+        if (selectedPlantId == null) return
+
         AlertDialog.Builder(this)
             .setTitle("Issue Resolved?")
             .setMessage("Has the plant condition been resolved?")
             .setPositiveButton("Yes") { dialog, _ ->
-                // Mark the condition as resolved
-                Toast.makeText(this, "Great! Plant condition marked as resolved.", Toast.LENGTH_SHORT).show()
+                // Update plant condition to healthy
+                val plant = plantDatabaseManager.getPlant(selectedPlantId!!)
+                plant?.let {
+                    val healthyCondition = if (it.type == "Tomato") "Healthy Tomato" else "Healthy Eggplant"
+
+                    // Update plant condition
+                    val updatedPlant = it.copy(
+                        currentCondition = healthyCondition,
+                        lastScannedDate = Date()
+                    )
+
+                    // Save to database
+                    plantDatabaseManager.updatePlant(updatedPlant)
+
+                    Toast.makeText(this, "Great! Plant condition marked as healthy.", Toast.LENGTH_SHORT).show()
+                }
+
                 dialog.dismiss()
 
-                // Return to the scanning screen
-                startCamera()
+                // Return to the plant management screen
+                val intent = Intent(this, PlantManagementActivity::class.java)
+                startActivity(intent)
+                finish()
             }
             .setNegativeButton("No") { dialog, _ ->
                 Toast.makeText(this, "Continue following the treatment plan.", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
             }
             .show()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        detector?.close()
+        cameraExecutor.shutdown()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (allPermissionsGranted()){
+            startCamera()
+        } else {
+            requestPermissionLauncher.launch(REQUIRED_PERMISSIONS)
+        }
     }
 
     companion object {

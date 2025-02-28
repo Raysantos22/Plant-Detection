@@ -1,4 +1,4 @@
-package Plantdetection
+package com.PlantDetection
 
 import android.view.LayoutInflater
 import android.view.View
