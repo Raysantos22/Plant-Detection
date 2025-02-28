@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="100dp"
+    android:viewportWidth="200"
+    android:viewportHeight="100">
+
+    <!-- Leaf -->
+    <path
+        android:fillColor="#8BC34A"
+        android:pathData="M50,30C40,10 70,5 80,20C90,35 80,60 60,50C40,40 50,30 50,30Z" />
+    <path
+        android:fillColor="#689F38"
+        android:pathData="M55,35C50,25 65,20 75,30C80,40 75,50 65,45C55,40 55,35 55,35Z" />
+
+    <!-- Tomato -->
+    <path
+        android:fillColor="#F44336"
+        android:pathData="M100,50m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
+    <path
+        android:pathData="M90,30C95,25 105,25 110,30"
+        android:strokeColor="#558B2F"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M105,30C110,20 115,25 115,35"
+        android:strokeColor="#558B2F"
+        android:strokeWidth="3"
+        android:fillColor="#00000000" />
+
+    <!-- Eggplant -->
+    <path
+        android:fillColor="#5E35B1"
+        android:pathData="M130,30C125,25 130,20 140,30C150,40 155,60 145,65C135,70 125,60 130,30Z" />
+    <path
+        android:fillColor="#558B2F"
+        android:strokeColor="#558B2F"
+        android:strokeWidth="3"
+        android:pathData="M135,30C130,20 125,15 135,15C145,15 135,25 135,30Z" />
+</vector>

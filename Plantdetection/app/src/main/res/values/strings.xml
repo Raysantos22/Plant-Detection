@@ -1,4 +1,49 @@
 <resources>
     <string name="app_name">PlantDetection</string>
     <string name="gpu">GPU</string>
+    <string name="start_scanning">Start Scanning</string>
+    <string name="stop_scanning">Stop Scanning</string>
+    <string name="capture_result">Capture Result</string>
+
+    <!-- Onboarding Screens -->
+    <string name="next">Next</string>
+    <string name="skip">Skip</string>
+    <string name="start">START</string>
+
+    <!-- Vegetable Selection -->
+    <string name="select_vegetable">SELECT VEGETABLE YOU WANT TO MONITOR</string>
+    <string name="tomato">TOMATO</string>
+    <string name="eggplant">EGGPLANT</string>
+    <string name="select">SELECT</string>
+
+    <!-- Loading Screen -->
+    <string name="loading_note">NOTE: MAKE SURE YOU CHOSE THE RIGHT VEGETABLE TO MONITOR. RESULT WILL BE ERROR IF YOU CHOSE WRONG VEGETABLE.</string>
+    <string name="loading">LOADING.....</string>
+
+    <!-- Condition Detail Screen -->
+    <string name="back">Back</string>
+    <string name="description">Description</string>
+    <string name="prevention_tips">Prevention Tips</string>
+    <string name="treatment_tips">Treatment Tips</string>
+    <string name="plant_monitoring">Plant Monitoring</string>
+    <string name="set_reminder">Set Reminder</string>
+    <string name="task_complete">Task Complete</string>
+    <string name="next_check">Next check: %1$s</string>
+    <string name="not_scheduled">Not scheduled</string>
+
+    <!-- Monitoring Dialogs -->
+    <string name="resolved_title">Issue Resolved?</string>
+    <string name="resolved_message">Has the plant condition been resolved?</string>
+    <string name="yes">Yes</string>
+    <string name="no">No</string>
+    <string name="continue_treatment">Continue following the treatment plan.</string>
+    <string name="condition_resolved">Great! Plant condition marked as resolved.</string>
+    <string name="task_marked_complete">Task marked as complete</string>
+    <string name="reminder_set">Reminder set for %1$s</string>
+
+    <!-- Notification Messages -->
+    <string name="healthy_notification_title">Time to water your %1$s</string>
+    <string name="healthy_notification_message">Your plant needs regular care to stay healthy!</string>
+    <string name="disease_notification_title">Check your %1$s for %2$s</string>
+    <string name="disease_notification_message">Follow the treatment steps to address the %1$s condition.</string>
 </resources>

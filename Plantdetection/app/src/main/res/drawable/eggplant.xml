@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Stem and Calyx -->
+    <path
+        android:fillColor="#558B2F"
+        android:pathData="M50,15C45,10 40,15 45,20C50,25 50,25 50,25" />
+    <path
+        android:fillColor="#7CB342"
+        android:pathData="M50,25C55,20 60,15 55,10C50,5 47,25 50,25Z" />
+
+    <!-- Calyx/Crown -->
+    <path
+        android:fillColor="#7CB342"
+        android:pathData="M50,25L40,25C40,25 35,30 40,35C45,40 50,30 50,25Z" />
+    <path
+        android:fillColor="#7CB342"
+        android:pathData="M50,25L60,25C60,25 65,30 60,35C55,40 50,30 50,25Z" />
+
+    <!-- Eggplant body -->
+    <path
+        android:fillColor="#5E35B1"
+        android:pathData="M50,60C75,60 75,85 60,90C45,95 25,90 30,65C35,40 40,60 50,60Z" />
+
+    <!-- Highlights -->
+    <path
+        android:fillColor="#9575CD"
+        android:pathData="M40,50C45,45 55,45 60,50C65,55 60,75 50,75C40,75 35,55 40,50Z"
+        android:fillAlpha="0.3" />
+</vector>

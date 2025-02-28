@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.PlantDetection"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.PlantDetection"
@@ -45,9 +45,11 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
+    implementation("androidx.activity:activity:1.10.0")
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    implementation ("androidx.activity:activity:1.8.2")// Use a version compatible with API 34
 
     val cameraxVersion = "1.4.0-alpha04"
     implementation("androidx.camera:camera-camera2:${cameraxVersion}")
