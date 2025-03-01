@@ -20,11 +20,13 @@ class PlantCareEventAdapter(
     private val onItemClick: (PlantDatabaseManager.PlantCareEvent) -> Unit,
     private val onCheckboxClick: (PlantDatabaseManager.PlantCareEvent) -> Unit,
     private val onRescheduleClick: ((PlantDatabaseManager.PlantCareEvent) -> Unit)? = null,
-    private val onRescanClick: ((PlantDatabaseManager.PlantCareEvent, String) -> Unit)? = null
+    private val onRescanClick: ((PlantDatabaseManager.PlantCareEvent, String) -> Unit)? = null,
+    private val onViewScheduleClick: ((String) -> Unit)? = null
 ) : RecyclerView.Adapter<PlantCareEventAdapter.EventViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): EventViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_plant_care_event, parent, false)
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.item_plant_care_event_enhanced, parent, false)
         return EventViewHolder(view)
     }
 
@@ -45,10 +47,12 @@ class PlantCareEventAdapter(
         private val eventTime: TextView = itemView.findViewById(R.id.eventTime)
         private val eventTitle: TextView = itemView.findViewById(R.id.eventTitle)
         private val eventDescription: TextView = itemView.findViewById(R.id.eventDescription)
-        private val eventCompleteCheckbox: CheckBox = itemView.findViewById(R.id.eventCompleteCheckbox)
+        private val eventCompleteCheckbox: CheckBox =
+            itemView.findViewById(R.id.eventCompleteCheckbox)
         private val eventDateText: TextView = itemView.findViewById(R.id.eventDateText)
         private val rescanButton: View? = itemView.findViewById(R.id.rescanButton)
         private val rescheduleButton: View? = itemView.findViewById(R.id.rescheduleButton)
+        private val viewScheduleButton: View? = itemView.findViewById(R.id.viewScheduleButton)
 
         init {
             itemView.setOnClickListener {
@@ -106,6 +110,15 @@ class PlantCareEventAdapter(
                     onRescheduleClick?.invoke(events[position])
                 }
             }
+
+            // Set up view schedule button if it exists
+            viewScheduleButton?.setOnClickListener {
+                val position = adapterPosition
+                if (position != RecyclerView.NO_POSITION) {
+                    val event = events[position]
+                    onViewScheduleClick?.invoke(event.plantId)
+                }
+            }
         }
 
         private fun getTodayStart(): Date {
@@ -129,58 +142,77 @@ class PlantCareEventAdapter(
 
         fun bind(event: PlantDatabaseManager.PlantCareEvent) {
             // Set icon based on event type
-            val iconRes = when (event.eventType.lowercase()) {
-                "watering" -> R.drawable.ic_watering
-                "treatment" -> R.drawable.ic_treatment
-                "scan" -> R.drawable.ic_scan
-                "fertilize" -> R.drawable.ic_plant_care
-                "prune" -> R.drawable.ic_plant_care
-                "pesticide" -> R.drawable.ic_treatment
-                "fungicide" -> R.drawable.ic_treatment
+            val iconRes = when {
+                event.eventType.startsWith("Treat: ") -> R.drawable.ic_treatment
+                event.eventType.lowercase() == "watering" -> R.drawable.ic_watering
+                event.eventType.lowercase() == "treatment" -> R.drawable.ic_treatment
+                event.eventType.lowercase() == "scan" -> R.drawable.ic_scan
+                event.eventType.lowercase() == "fertilize" -> R.drawable.ic_plant_care
+                event.eventType.lowercase() == "prune" -> R.drawable.ic_plant_care
+                event.eventType.lowercase() == "pesticide" -> R.drawable.ic_treatment
+                event.eventType.lowercase() == "fungicide" -> R.drawable.ic_treatment
                 else -> R.drawable.ic_plant_care
             }
             eventTypeIcon.setImageResource(iconRes)
 
             // Format time
-            val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+            val timeFormat = SimpleDateFormat("h:mm a", Locale.getDefault())
             eventTime.text = timeFormat.format(event.date)
 
             // Show date if this isn't today
             val today = getTodayStart()
             val eventDay = getDayStart(event.date)
             if (eventDay.time != today.time) {
-                val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
                 eventDateText.visibility = View.VISIBLE
+                val dateFormat = SimpleDateFormat("MMM d", Locale.getDefault())
                 eventDateText.text = dateFormat.format(event.date)
             } else {
                 eventDateText.visibility = View.GONE
             }
 
-            // Set title based on event type and plant
+            // Get plant name
             val plantDatabaseManager = PlantDatabaseManager(itemView.context)
             val plant = plantDatabaseManager.getPlant(event.plantId)
             val plantName = plant?.name ?: "Unknown plant"
 
-            eventTitle.text = when (event.eventType.lowercase()) {
-                "watering" -> "Water $plantName"
-                "treatment" -> "Treat $plantName"
-                "scan" -> "Scan $plantName"
-                "fertilize" -> "Fertilize $plantName"
-                "prune" -> "Prune $plantName"
-                "pesticide" -> "Apply pesticide to $plantName"
-                "fungicide" -> "Apply fungicide to $plantName"
-                else -> "${event.eventType} for $plantName"
-            }
+            // Set title based on event type and plant - with more descriptive treatment names
+            if (event.eventType.startsWith("Treat: ")) {
+                // Extract condition name and check if there's a specific task in the notes
+                val conditionName = event.eventType.substringAfter("Treat: ")
 
-            // Set description
-            val description = if (event.conditionName != null) {
-                "For ${event.conditionName}"
-            } else if (event.notes.isNotEmpty()) {
-                event.notes
+                // Look for task name in notes (typically in format "TaskName: Description")
+                val taskName =
+                    event.notes.split("\n\n").getOrNull(1)?.split(":")?.getOrNull(0)?.trim()
+                        ?: "Treatment"
+
+                // Create a more descriptive title that shows what action to take
+                eventTitle.text = "$taskName for $plantName"
+
+                // Add condition info to description
+                eventDescription.text = "For ${conditionName}"
             } else {
-                "No additional details"
+                // For non-treatment events, use standard formatting
+                eventTitle.text = when (event.eventType.lowercase()) {
+                    "watering" -> "Water $plantName"
+                    "treatment" -> "Treat $plantName"
+                    "scan" -> "Scan $plantName"
+                    "fertilize" -> "Fertilize $plantName"
+                    "prune" -> "Prune $plantName"
+                    "pesticide" -> "Apply pesticide to $plantName"
+                    "fungicide" -> "Apply fungicide to $plantName"
+                    else -> "${event.eventType} for $plantName"
+                }
+
+                // Set description
+                val description = if (event.conditionName != null) {
+                    "For ${event.conditionName}"
+                } else if (event.notes.isNotEmpty()) {
+                    event.notes
+                } else {
+                    "No additional details"
+                }
+                eventDescription.text = description
             }
-            eventDescription.text = description
 
             // Set checkbox state (without triggering listener)
             eventCompleteCheckbox.setOnCheckedChangeListener(null)
@@ -208,25 +240,24 @@ class PlantCareEventAdapter(
                 itemView.setBackgroundResource(R.drawable.current_event_background)
             }
 
-            // Show rescan button only for treatment events that are in the future or today
+            // Show rescan button only for treatment events that are in the future or today AND not completed
             if (rescanButton != null) {
-                if (event.eventType.lowercase() == "treatment" &&
-                    (eventDay.time == today.time || eventDay.after(today)) &&
-                    !event.completed) {
-                    rescanButton.visibility = View.VISIBLE
-                } else {
-                    rescanButton.visibility = View.GONE
-                }
+                val showRescan =
+                    (event.eventType.startsWith("Treat: ") || event.eventType.lowercase() == "treatment") &&
+                            (eventDay.time == today.time || eventDay.after(today)) &&
+                            !event.completed
+
+                rescanButton.visibility = if (showRescan) View.VISIBLE else View.GONE
             }
 
             // Show reschedule button only for future events
             if (rescheduleButton != null) {
-                if (eventDay.after(today) && !event.completed) {
-                    rescheduleButton.visibility = View.VISIBLE
-                } else {
-                    rescheduleButton.visibility = View.GONE
-                }
+                rescheduleButton.visibility =
+                    if (eventDay.after(today) && !event.completed) View.VISIBLE else View.GONE
             }
+
+            // Always show view schedule button
+            viewScheduleButton?.visibility = View.VISIBLE
         }
     }
 }

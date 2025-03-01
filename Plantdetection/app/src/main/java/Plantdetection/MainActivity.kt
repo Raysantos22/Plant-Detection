@@ -148,10 +148,11 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 // If we have a plant ID, update the plant's condition
                 if (selectedPlantId != null) {
                     updatePlantCondition(selectedPlantId!!, detection.clsName)
+                    // Note: showPlantInfoDialog is called inside updatePlantCondition for rescans
+                } else {
+                    // Show info dialog for fresh scan
+                    showPlantInfoDialog(detection.clsName, true, false)
                 }
-
-                // Show info dialog
-                showPlantInfoDialog(detection.clsName, true)
             } else {
                 Toast.makeText(this, "Invalid detection for selected vegetable", Toast.LENGTH_SHORT).show()
             }
@@ -160,9 +161,15 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
     }
 
+
     private fun updatePlantCondition(plantId: String, conditionName: String) {
         val plant = plantDatabaseManager.getPlant(plantId)
         plant?.let {
+            // Check if this is a new condition or different from the current one
+            val isNewCondition = plant.currentCondition != conditionName
+            val wasHealthy = plant.currentCondition?.startsWith("Healthy") ?: true
+            val isNowHealthy = conditionName.startsWith("Healthy")
+
             // Update plant condition
             val updatedPlant = it.copy(
                 currentCondition = conditionName,
@@ -186,27 +193,159 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 // Save event
                 plantDatabaseManager.addPlantCareEvent(scanEvent)
 
-                // If not healthy, create treatment event
-                if (!conditionName.startsWith("Healthy")) {
-                    val treatmentId = "treatment_${plantId}_${System.currentTimeMillis()}"
-                    val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
-                        id = treatmentId,
-                        plantId = plantId,
-                        eventType = "Treatment",
-                        date = Date(),
-                        conditionName = conditionName,
-                        notes = "Treatment needed for $conditionName",
-                        completed = false
-                    )
+                // If changing from healthy to diseased, create treatment
+                if (wasHealthy && !isNowHealthy) {
+                    createAutomaticTreatmentSchedule(plantId, conditionName)
 
-                    // Save treatment event
-                    plantDatabaseManager.addPlantCareEvent(treatmentEvent)
+                    // Show plant info dialog with rescan flag = true
+                    showPlantInfoDialog(conditionName, true, true)
+
+                    Toast.makeText(this, "Treatment plan created for ${conditionName}", Toast.LENGTH_SHORT).show()
                 }
+                // If changing from diseased to healthy, show congratulations
+                else if (!wasHealthy && isNowHealthy) {
+                    // Mark any remaining treatment tasks as completed
+                    markRemainingTreatmentsAsCompleted(plantId)
 
-                Toast.makeText(this, "Plant condition updated", Toast.LENGTH_SHORT).show()
+                    // Show recovery dialog directly
+                    AlertDialog.Builder(this)
+                        .setTitle("Plant Recovered!")
+                        .setMessage("Great news! Your ${plant.name} has recovered and is now healthy. All treatments have been marked as completed.")
+                        .setPositiveButton("View Plant") { _, _ ->
+                            val intent = Intent(this, PlantManagementActivity::class.java)
+                            intent.putExtra("OPEN_PLANT_ID", plantId)
+                            startActivity(intent)
+                            finish() // Close this activity
+                        }
+                        .setNegativeButton("OK", null)
+                        .show()
+                }
+                // If condition changed but still diseased, update treatment
+                else if (isNewCondition && !isNowHealthy) {
+                    // Mark old treatments as completed
+                    markRemainingTreatmentsAsCompleted(plantId)
+
+                    // Create new treatment plan
+                    createAutomaticTreatmentSchedule(plantId, conditionName)
+
+                    // Show plant info dialog with rescan flag = true
+                    showPlantInfoDialog(conditionName, true, true)
+
+                    Toast.makeText(this, "New treatment plan created for ${conditionName}", Toast.LENGTH_SHORT).show()
+                }
+                // Just a normal rescan with no change
+                else {
+                    // Show plant info dialog with rescan flag = true
+                    showPlantInfoDialog(conditionName, true, true)
+
+                    Toast.makeText(this, "Plant condition updated", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
+    private fun markRemainingTreatmentsAsCompleted(plantId: String) {
+        val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
+
+        // Find all incomplete treatment events
+        val pendingTreatments = allEvents.filter {
+            (it.eventType.startsWith("Treat: ") || it.eventType.equals("Treatment", ignoreCase = true)) &&
+                    !it.completed
+        }
+
+        // Mark each one as completed
+        for (event in pendingTreatments) {
+            val updatedEvent = event.copy(completed = true)
+            plantDatabaseManager.updatePlantCareEvent(updatedEvent)
+        }
+    }
+
+    private fun createAutomaticTreatmentSchedule(plantId: String, conditionName: String) {
+        // Get the condition data
+        val condition = PlantConditionData.conditions[conditionName]
+
+        if (condition != null) {
+            // Create a treatment plan title
+            val treatmentTitle = "Treatment Plan for ${condition.name}"
+
+            // Show a dialog to inform the user
+            AlertDialog.Builder(this)
+                .setTitle("Treatment Plan Created")
+                .setMessage("A treatment plan has been automatically created for the detected condition: ${condition.name}. Do you want to view the treatment details?")
+                .setPositiveButton("View Treatment Plan") { _, _ ->
+                    // Take the user to the plant management screen
+                    val intent = Intent(this, PlantManagementActivity::class.java)
+                    intent.putExtra("OPEN_PLANT_ID", plantId)
+                    intent.putExtra("SHOW_TREATMENT_PLAN", true)
+                    startActivity(intent)
+                }
+                .setNegativeButton("Not Now", null)
+                .show()
+
+            // Schedule treatments for each treatment task in the condition
+            for ((index, task) in condition.treatmentTasks.withIndex()) {
+                // Create initial treatment task for today
+                val taskId = "treatment_${plantId}_${System.currentTimeMillis() + index}"
+                val today = Calendar.getInstance()
+
+                // Set appropriate times for different tasks
+                when {
+                    task.taskName.contains("Remove", ignoreCase = true) -> today.set(Calendar.HOUR_OF_DAY, 10)
+                    task.taskName.contains("Apply", ignoreCase = true) -> today.set(Calendar.HOUR_OF_DAY, 17)
+                    else -> today.set(Calendar.HOUR_OF_DAY, 12)
+                }
+                today.set(Calendar.MINUTE, 0)
+                today.set(Calendar.SECOND, 0)
+
+                // Determine default treatment notes using the first treatment task for the condition
+                val defaultNotes = PlantConditionData.conditions[conditionName]
+                    ?.treatmentTasks?.firstOrNull()
+                    ?.let { firstTask ->
+                        "${firstTask.taskName}: ${firstTask.description}\n\nMaterials: ${firstTask.materials.joinToString(", ")}\n\nInstructions:\n${firstTask.instructions.joinToString("\n- ", "- ")}"
+                    } ?: "No specific treatment details available"
+
+                // Create treatment event with disease name in title
+                val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
+                    id = taskId,
+                    plantId = plantId,
+                    eventType = "Treat: ${condition.name}",
+                    date = today.time,
+                    conditionName = condition.name,
+                    notes = defaultNotes,
+                    completed = false
+                )
+
+                // Add initial treatment task
+                plantDatabaseManager.addPlantCareEvent(treatmentEvent)
+
+                // Add follow-up tasks based on the schedule interval
+                if (task.scheduleInterval > 0) {
+                    val followUpCalendar = Calendar.getInstance()
+                    followUpCalendar.time = today.time
+
+                    // Create up to 3 follow-up tasks
+                    val maxFollowUps = 3
+
+                    for (followUpIndex in 1..maxFollowUps) {
+                        followUpCalendar.add(Calendar.DAY_OF_MONTH, task.scheduleInterval)
+
+                        val followUpId = "followup_${plantId}_${System.currentTimeMillis() + index + followUpIndex * 100}"
+                        val followUpEvent = PlantDatabaseManager.PlantCareEvent(
+                            id = followUpId,
+                            plantId = plantId,
+                            eventType = "Treat: ${condition.name}",
+                            date = followUpCalendar.time,
+                            conditionName = condition.name,
+                            notes = defaultNotes,
+                            completed = false
+                        )
+
+                        plantDatabaseManager.addPlantCareEvent(followUpEvent)
+                    }
+                }
+            }
+        }
+    }
+
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
@@ -295,7 +434,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     }
 
     // Show dialog with plant condition information, prevention and treatment tips
-    private fun showPlantInfoDialog(conditionName: String, showMonitoringOptions: Boolean = false) {
+    private fun showPlantInfoDialog(conditionName: String, showMonitoringOptions: Boolean = false, isRescan: Boolean = false) {
         // Get condition data
         val condition = PlantConditionData.conditions[conditionName] ?: return
 
@@ -312,6 +451,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         val setReminderButton = dialogView.findViewById<android.widget.Button>(R.id.setReminderButton)
         val taskCompleteButton = dialogView.findViewById<android.widget.Button>(R.id.taskCompleteButton)
         val addToCalendarButton = dialogView.findViewById<android.widget.Button>(R.id.addToCalendarButton)
+        val goToManagementButton = dialogView.findViewById<android.widget.Button>(R.id.goToManagementButton) // Add this to your layout
 
         conditionTitle.text = condition.name
         conditionDescription.text = condition.description
@@ -332,10 +472,33 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             treatmentTipsContainer.addView(tipView)
         }
 
-        // Show monitoring options if requested and we have a plant ID
-        if (showMonitoringOptions && selectedPlantId != null) {
+        // Configure the monitoring section based on scan type
+        if (isRescan && selectedPlantId != null) {
+            // This is a rescan of an existing plant - show Go to Management button
             monitoringSection.visibility = View.VISIBLE
-            addToCalendarButton.visibility = View.GONE // Hide add to calendar if already a plant
+
+            // Hide the regular buttons
+            setReminderButton.visibility = View.GONE
+            taskCompleteButton.visibility = View.GONE
+            addToCalendarButton.visibility = View.GONE
+
+            // Show the go to management button
+            goToManagementButton.visibility = View.VISIBLE
+
+            // Set go to management button listener
+            goToManagementButton.setOnClickListener {
+                val intent = Intent(this, PlantManagementActivity::class.java)
+                intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
+                startActivity(intent)
+                finish() // Close this activity
+            }
+        } else if (showMonitoringOptions && selectedPlantId != null) {
+            // Regular scan for an existing plant
+            monitoringSection.visibility = View.VISIBLE
+            goToManagementButton.visibility = View.GONE
+            setReminderButton.visibility = View.VISIBLE
+            taskCompleteButton.visibility = View.VISIBLE
+            addToCalendarButton.visibility = View.GONE
 
             // Set reminder button
             setReminderButton.setOnClickListener {
@@ -358,6 +521,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             monitoringSection.visibility = View.VISIBLE
             setReminderButton.visibility = View.GONE
             taskCompleteButton.visibility = View.GONE
+            goToManagementButton.visibility = View.GONE
             addToCalendarButton.visibility = View.VISIBLE
 
             // Add to calendar button
@@ -372,9 +536,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         closeButton.setOnClickListener {
             infoDialog?.dismiss()
 
-            // If we came from the Plant Management screen, go back there
-            if (selectedPlantId != null) {
+            // If we came from the Plant Management screen and this was a rescan, go back there
+            if (selectedPlantId != null && isRescan) {
                 val intent = Intent(this, PlantManagementActivity::class.java)
+                intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
                 startActivity(intent)
                 finish()
             }

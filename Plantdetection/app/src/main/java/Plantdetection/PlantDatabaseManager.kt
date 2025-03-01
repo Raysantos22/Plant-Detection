@@ -27,8 +27,9 @@ class PlantDatabaseManager(private val context: Context) {
 
         // Date formats
         val DATE_FORMAT = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val TIME_FORMAT = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val TIME_FORMAT = SimpleDateFormat("h:mm a", Locale.getDefault()) // Changed to AM/PM format
         val DATETIME_FORMAT = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+        val DISPLAY_DATETIME_FORMAT = SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault()) // Added for display
     }
 
     /**
@@ -100,7 +101,18 @@ class PlantDatabaseManager(private val context: Context) {
 
         return result
     }
+    fun getMonthEvents(year: Int, month: Int): List<PlantCareEvent> {
+        val calendar = Calendar.getInstance()
+        calendar.set(year, month, 1, 0, 0, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startDate = calendar.time
 
+        calendar.add(Calendar.MONTH, 1)
+        calendar.add(Calendar.MILLISECOND, -1)
+        val endDate = calendar.time
+
+        return getCareEventsInDateRange(startDate, endDate)
+    }
     /**
      * Get a plant by ID
      */
@@ -399,7 +411,11 @@ class PlantDatabaseManager(private val context: Context) {
         val plantId = sharedPreferences.getString("care_event_${eventId}_plant_id", null) ?: return false
 
         // Cancel any notification for this event
-        notificationService.cancelNotification(eventId)
+        try {
+            cancelNotification(eventId)
+        } catch (e: Exception) {
+            Log.e("PlantDatabaseManager", "Error while canceling notification for event $eventId: ${e.message}")
+        }
 
         val editor = sharedPreferences.edit()
 
@@ -462,6 +478,35 @@ class PlantDatabaseManager(private val context: Context) {
      */
     fun scheduleWatering(plantId: String, wateringDate: Date, notes: String = ""): String {
         val plant = getPlant(plantId) ?: return ""
+
+        // Check if there's already a watering event scheduled for this date
+        val calendar = Calendar.getInstance()
+        calendar.time = wateringDate
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.time
+
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfDay = calendar.time
+
+        val existingEvents = getPlantCareEvents(plantId)
+            .filter {
+                it.eventType.equals("Watering", ignoreCase = true) &&
+                        !it.completed &&
+                        it.date >= startOfDay && it.date <= endOfDay
+            }
+
+        // If there's already a watering event for this day, return its ID
+        if (existingEvents.isNotEmpty()) {
+            return existingEvents.first().id
+        }
+
+        // Otherwise create a new watering event
         val eventId = "watering_${plantId}_${System.currentTimeMillis()}"
 
         val wateringEvent = PlantCareEvent(
@@ -481,6 +526,7 @@ class PlantDatabaseManager(private val context: Context) {
 
         return eventId
     }
+
 
     /**
      * Mark a care event as completed
@@ -507,6 +553,7 @@ class PlantDatabaseManager(private val context: Context) {
     /**
      * Schedule the next watering based on frequency
      */
+// In the PlantDatabaseManager class, update the scheduleNextWatering method
     fun scheduleNextWatering(plantId: String): String {
         val plant = getPlant(plantId) ?: return ""
 
@@ -517,6 +564,7 @@ class PlantDatabaseManager(private val context: Context) {
                         !it.completed &&
                         it.date.after(Date())
             }
+            .sortedBy { it.date }
 
         // If there are already future watering events, don't schedule another one
         if (futureWateringEvents.isNotEmpty()) {
@@ -539,10 +587,22 @@ class PlantDatabaseManager(private val context: Context) {
 
         // Schedule next watering
         val eventId = scheduleWatering(plantId, calendar.time, "Regular watering")
-        Log.d("PlantDatabaseManager", "Scheduled next watering for ${calendar.time}")
+
+        // Format time with AM/PM
+        val dateFormat = SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault())
+        Log.d("PlantDatabaseManager", "Scheduled next watering for ${dateFormat.format(calendar.time)}")
 
         return eventId
     }
+    fun cancelNotification(eventId: String) {
+        try {
+            val notificationService = PlantNotificationService(context)
+            notificationService.cancelNotification(eventId)
+        } catch (e: Exception) {
+            Log.e("PlantDatabaseManager", "Error canceling notification: ${e.message}")
+        }
+    }
+
     fun toggleEventCompletion(eventId: String): Boolean {
         val event = getPlantCareEvent(eventId) ?: return false
 

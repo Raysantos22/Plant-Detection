@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="16dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/monthHeaderText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="April 2025"
+        android:textStyle="bold"
+        android:textSize="18sp"
+        android:textColor="@color/app_dark_green" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="4dp"
+        android:background="@color/app_green" />
+
+</LinearLayout>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Watering Schedule"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="@color/black"/>
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Would you like to schedule a single watering or multiple waterings?"
+        android:textSize="16sp"
+        android:textColor="@color/dark_gray"/>
+
+    <RadioGroup
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp">
+
+        <RadioButton
+            android:id="@+id/singleWateringRadio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Single watering"
+            android:checked="true"/>
+
+        <RadioButton
+            android:id="@+id/multipleWateringRadio"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Multiple waterings"
+            android:layout_marginTop="8dp"/>
+    </RadioGroup>
+
+    <LinearLayout
+        android:id="@+id/wateringCountLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="16dp"
+        android:gravity="center_vertical"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Number of waterings: "
+            android:textSize="16sp"
+            android:textColor="@color/black"/>
+
+        <EditText
+            android:id="@+id/wateringCountInput"
+            android:layout_width="80dp"
+            android:layout_height="wrap_content"
+            android:inputType="number"
+            android:text="4"/>
+    </LinearLayout>
+</LinearLayout>
