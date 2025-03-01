@@ -717,23 +717,114 @@ class PlantDatabaseManager(private val context: Context) {
 
             scheduleWatering(plantId, wateringDate.time, "Initial watering")
 
-            // If condition is not healthy, also create a treatment event
+            // If condition is not healthy, create detailed treatment events
             if (!conditionName.startsWith("Healthy")) {
-                val treatmentDate = Calendar.getInstance()
-                treatmentDate.add(Calendar.HOUR_OF_DAY, 4) // Treatment in 4 hours
+                // Get the condition data to create appropriate treatment tasks
+                val condition = PlantConditionData.conditions[conditionName]
 
-                val treatmentId = "treatment_${plantId}_${System.currentTimeMillis()}"
-                val treatmentEvent = PlantCareEvent(
-                    id = treatmentId,
-                    plantId = plantId,
-                    eventType = "Treatment",
-                    date = treatmentDate.time,
-                    conditionName = conditionName,
-                    notes = "Treatment needed for $conditionName",
-                    completed = false
-                )
+                if (condition != null) {
+                    // Create a treatment plan title
+                    val treatmentTitle = "Treatment Plan for ${condition.name}"
 
-                addPlantCareEvent(treatmentEvent)
+                    // If we have detailed treatment tasks, create individual events for each
+                    if (condition.treatmentTasks.isNotEmpty()) {
+                        for ((index, task) in condition.treatmentTasks.withIndex()) {
+                            // Set appropriate timing for the task
+                            val treatmentDate = Calendar.getInstance()
+                            treatmentDate.add(Calendar.HOUR_OF_DAY, 4 + index) // Stagger tasks
+
+                            // Create detailed treatment notes
+                            val taskNotes = "${treatmentTitle}\n\n" +
+                                    "${task.taskName}: ${task.description}\n\n" +
+                                    "Materials needed:\n" +
+                                    task.materials.joinToString("\n", "• ") + "\n\n" +
+                                    "Instructions:\n" +
+                                    task.instructions.joinToString("\n", "• ")
+
+                            val taskId = "treatment_${plantId}_${System.currentTimeMillis() + index}"
+                            val treatmentEvent = PlantCareEvent(
+                                id = taskId,
+                                plantId = plantId,
+                                eventType = "Treat: ${condition.name}",
+                                date = treatmentDate.time,
+                                conditionName = conditionName,
+                                notes = taskNotes,
+                                completed = false
+                            )
+
+                            addPlantCareEvent(treatmentEvent)
+
+                            // Schedule follow-up tasks if needed
+                            if (task.scheduleInterval > 0) {
+                                val followUpCalendar = Calendar.getInstance()
+                                followUpCalendar.time = treatmentDate.time
+
+                                for (followUpIndex in 1..2) { // Create 2 follow-ups
+                                    followUpCalendar.add(Calendar.DAY_OF_MONTH, task.scheduleInterval)
+
+                                    val followUpId = "followup_${plantId}_${System.currentTimeMillis() + index + followUpIndex * 100}"
+                                    val followUpNotes = "${treatmentTitle}\n\n" +
+                                            "Follow-up #$followUpIndex: ${task.taskName}\n\n" +
+                                            "${task.description}\n\n" +
+                                            "Materials needed:\n" +
+                                            task.materials.joinToString("\n", "• ") + "\n\n" +
+                                            "Instructions:\n" +
+                                            task.instructions.joinToString("\n", "• ")
+
+                                    val followUpEvent = PlantCareEvent(
+                                        id = followUpId,
+                                        plantId = plantId,
+                                        eventType = "Treat: ${condition.name}",
+                                        date = followUpCalendar.time,
+                                        conditionName = conditionName,
+                                        notes = followUpNotes,
+                                        completed = false
+                                    )
+
+                                    addPlantCareEvent(followUpEvent)
+                                }
+                            }
+                        }
+                    } else {
+                        // Fall back to general treatment tips if no detailed tasks
+                        val treatmentDate = Calendar.getInstance()
+                        treatmentDate.add(Calendar.HOUR_OF_DAY, 4)
+
+                        val generalTreatmentNotes = "${treatmentTitle}\n\n" +
+                                "Recommended treatments:\n" +
+                                condition.treatmentTips.joinToString("\n", "• ")
+
+                        val treatmentId = "treatment_${plantId}_${System.currentTimeMillis()}"
+                        val treatmentEvent = PlantCareEvent(
+                            id = treatmentId,
+                            plantId = plantId,
+                            eventType = "Treat: ${condition.name}",
+                            date = treatmentDate.time,
+                            conditionName = conditionName,
+                            notes = generalTreatmentNotes,
+                            completed = false
+                        )
+
+                        addPlantCareEvent(treatmentEvent)
+                    }
+                } else {
+                    // Fallback for unknown conditions
+                    val treatmentDate = Calendar.getInstance()
+                    treatmentDate.add(Calendar.HOUR_OF_DAY, 4)
+
+                    val treatmentId = "treatment_${plantId}_${System.currentTimeMillis()}"
+                    val treatmentEvent = PlantCareEvent(
+                        id = treatmentId,
+                        plantId = plantId,
+                        eventType = "Treatment",
+                        date = treatmentDate.time,
+                        conditionName = conditionName,
+                        notes = "Treatment needed for $conditionName. Consider consulting a plant expert for specific treatment options.",
+                        completed = false
+                    )
+
+                    addPlantCareEvent(treatmentEvent)
+                }
             }
 
             return plantId
@@ -741,7 +832,6 @@ class PlantDatabaseManager(private val context: Context) {
 
         return ""
     }
-
     /**
      * Test method to show a notification immediately
      */

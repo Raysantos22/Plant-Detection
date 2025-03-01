@@ -296,21 +296,22 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 today.set(Calendar.MINUTE, 0)
                 today.set(Calendar.SECOND, 0)
 
-                // Determine default treatment notes using the first treatment task for the condition
-                val defaultNotes = PlantConditionData.conditions[conditionName]
-                    ?.treatmentTasks?.firstOrNull()
-                    ?.let { firstTask ->
-                        "${firstTask.taskName}: ${firstTask.description}\n\nMaterials: ${firstTask.materials.joinToString(", ")}\n\nInstructions:\n${firstTask.instructions.joinToString("\n- ", "- ")}"
-                    } ?: "No specific treatment details available"
+                // Create detailed and descriptive notes for the treatment
+                val taskNotes = "${treatmentTitle}\n\n" +
+                        "${task.taskName}: ${task.description}\n\n" +
+                        "Materials needed:\n" +
+                        task.materials.joinToString("\n", "• ") + "\n\n" +
+                        "Instructions:\n" +
+                        task.instructions.joinToString("\n", "• ")
 
-                // Create treatment event with disease name in title
+                // Create treatment event with disease name in title and detailed notes
                 val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
                     id = taskId,
                     plantId = plantId,
                     eventType = "Treat: ${condition.name}",
                     date = today.time,
                     conditionName = condition.name,
-                    notes = defaultNotes,
+                    notes = taskNotes,
                     completed = false
                 )
 
@@ -329,13 +330,23 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                         followUpCalendar.add(Calendar.DAY_OF_MONTH, task.scheduleInterval)
 
                         val followUpId = "followup_${plantId}_${System.currentTimeMillis() + index + followUpIndex * 100}"
+
+                        // Create detailed notes for follow-up
+                        val followUpNotes = "${treatmentTitle}\n\n" +
+                                "Follow-up #$followUpIndex: ${task.taskName}\n\n" +
+                                "${task.description}\n\n" +
+                                "Materials needed:\n" +
+                                task.materials.joinToString("\n", "• ") + "\n\n" +
+                                "Instructions:\n" +
+                                task.instructions.joinToString("\n", "• ")
+
                         val followUpEvent = PlantDatabaseManager.PlantCareEvent(
                             id = followUpId,
                             plantId = plantId,
                             eventType = "Treat: ${condition.name}",
                             date = followUpCalendar.time,
                             conditionName = condition.name,
-                            notes = defaultNotes,
+                            notes = followUpNotes,
                             completed = false
                         )
 
@@ -345,7 +356,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
         }
     }
-
 
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)

@@ -1589,75 +1589,102 @@ class PlantManagementActivity : AppCompatActivity() {
         val deleteButton = dialogView.findViewById<android.widget.Button>(R.id.deleteEventButton)
         val rescheduleButton = dialogView.findViewById<android.widget.Button>(R.id.rescheduleEventButton)
         val rescanButton = dialogView.findViewById<android.widget.Button>(R.id.rescanButton)
-        val conditionHeaderText = dialogView.findViewById<TextView>(R.id.conditionHeaderText) // Add this to your layout
-        val conditionNameText = dialogView.findViewById<TextView>(R.id.conditionNameText) // Add this to your layout
+        rescanButton.visibility = View.GONE
+        rescheduleButton.visibility = View.GONE
+
+
+
+        // Try to find the condition header and name TextViews (add them if not present)
+        val conditionHeaderText = dialogView.findViewById<TextView>(R.id.conditionHeaderText)
+        val conditionNameText = dialogView.findViewById<TextView>(R.id.conditionNameText)
 
         // Get plant name
         val plant = plantDatabaseManager.getPlant(event.plantId)
         val plantName = plant?.name ?: "Unknown plant"
 
-        // Set event details
+        // Set event details with specific treatment information
         if (event.eventType.startsWith("Treat: ")) {
             // For treatment events, show specific info
             val conditionName = event.eventType.substringAfter("Treat: ")
+            val condition = PlantConditionData.conditions[conditionName]
 
-            // Get task name from notes if available
-            val taskName = event.notes.split("\n\n").getOrNull(1)?.split(":")?.getOrNull(0)?.trim() ?: "Treatment"
+            // Try to extract task name from notes
+            var taskName = "Treatment"
+            if (event.notes.contains(":")) {
+                val parts = event.notes.split("\n\n")
+                for (part in parts) {
+                    if (part.contains(":")) {
+                        taskName = part.split(":")[0].trim()
+                        break
+                    }
+                }
+            } else if (condition != null && condition.treatmentTasks.isNotEmpty()) {
+                // If no task name in notes but have condition data, use first task name
+                taskName = condition.treatmentTasks[0].taskName
+            }
 
             eventTypeText.text = taskName
-            conditionHeaderText.visibility = View.VISIBLE
-            conditionNameText.visibility = View.VISIBLE
-            conditionNameText.text = conditionName
+
+            // Show condition name if we have those views
+            if (conditionHeaderText != null && conditionNameText != null) {
+                conditionHeaderText.visibility = View.VISIBLE
+                conditionNameText.visibility = View.VISIBLE
+                conditionNameText.text = conditionName
+            }
         } else {
             // For other event types
             eventTypeText.text = event.eventType
-            conditionHeaderText.visibility = if (event.conditionName != null) View.VISIBLE else View.GONE
-            conditionNameText.visibility = if (event.conditionName != null) View.VISIBLE else View.GONE
-            conditionNameText.text = event.conditionName ?: ""
+
+            // Show condition name if available and we have those views
+            if (conditionHeaderText != null && conditionNameText != null) {
+                conditionHeaderText.visibility = if (event.conditionName != null) View.VISIBLE else View.GONE
+                conditionNameText.visibility = if (event.conditionName != null) View.VISIBLE else View.GONE
+                conditionNameText.text = event.conditionName ?: ""
+            }
         }
 
         eventDateText.text = SimpleDateFormat("EEE, MMM d, yyyy - h:mm a", Locale.getDefault()).format(event.date)
         eventPlantText.text = plantName
 
-        // Format notes for better readability - particularly for treatment tasks
-        if (event.eventType.startsWith("Treat: ")) {
-            // Try to extract structured info from notes
-            val parts = event.notes.split("\n\n")
-            var formattedNotes = ""
+        // Format notes for better readability with default treatment if needed
+        var notesToDisplay = event.notes
 
-            if (parts.size > 1) {
-                // Skip the first part which is usually the treatment plan title
-                for (i in 1 until parts.size) {
-                    val part = parts[i]
-                    if (part.contains(":")) {
-                        // This is likely a section title with content
-                        val sectionParts = part.split(":", limit = 2)
-                        formattedNotes += "<b>${sectionParts[0]}:</b>${sectionParts[1]}\n\n"
+        if (event.eventType.startsWith("Treat: ")) {
+            val conditionName = event.eventType.substringAfter("Treat: ")
+            val condition = PlantConditionData.conditions[conditionName]
+
+            // If notes are empty or minimal, add default treatment instructions
+            if (notesToDisplay.isBlank() || notesToDisplay.length < 50) {
+                if (condition != null) {
+                    val taskName = if (event.notes.contains(":")) {
+                        event.notes.split("\n\n").getOrNull(1)?.split(":")?.getOrNull(0)?.trim()
+                    } else if (condition.treatmentTasks.isNotEmpty()) {
+                        condition.treatmentTasks[0].taskName
+                    } else null
+
+                    val taskInfo = if (taskName != null && condition.treatmentTasks.isNotEmpty()) {
+                        condition.treatmentTasks.find { it.taskName == taskName }
+                    } else if (condition.treatmentTasks.isNotEmpty()) {
+                        condition.treatmentTasks[0]
+                    } else null
+
+                    if (taskInfo != null) {
+                        notesToDisplay = "Treatment for ${condition.name}:\n\n" +
+                                "${taskInfo.taskName}: ${taskInfo.description}\n\n" +
+                                "Materials needed:\n" +
+                                taskInfo.materials.joinToString("\n", "• ") + "\n\n" +
+                                "Instructions:\n" +
+                                taskInfo.instructions.joinToString("\n", "• ")
                     } else {
-                        // Just add the part as is
-                        formattedNotes += part + "\n\n"
+                        notesToDisplay = "Treatment for ${condition.name}:\n\n" +
+                                condition.treatmentTips.joinToString("\n\n", "• ")
                     }
                 }
-            } else {
-                // Just use the notes as they are
-                formattedNotes = event.notes
             }
-
-            // If notes are empty or couldn't be parsed, show default treatment instructions
-            if (formattedNotes.isBlank() && event.conditionName != null) {
-                val condition = PlantConditionData.conditions[event.conditionName]
-                if (condition != null) {
-                    formattedNotes = "<b>Treatment for ${condition.name}:</b>\n\n" +
-                            condition.treatmentTips.joinToString("\n\n• ", "• ")
-                }
-            }
-
-            // Use HTML formatting for the notes
-            eventNotesText.text = Html.fromHtml(formattedNotes, Html.FROM_HTML_MODE_COMPACT)
-        } else {
-            // For non-treatment events, just show the notes as they are
-            eventNotesText.text = if (event.notes.isNotEmpty()) event.notes else "No notes"
         }
+
+        // Display notes (with added treatment info if needed)
+        eventNotesText.text = notesToDisplay
 
         eventStatusText.text = if (event.completed) "Completed" else "Pending"
 
@@ -1689,9 +1716,9 @@ class PlantManagementActivity : AppCompatActivity() {
         // Only show reschedule for future events
         rescheduleButton.visibility = if (isFutureEvent && !event.completed) View.VISIBLE else View.GONE
 
-        // Only show rescan button for treatment events that aren't completed
-        val isTreatmentEvent = event.eventType.startsWith("Treat: ") || event.eventType.equals("Treatment", ignoreCase = true)
-        rescanButton.visibility = if (isTreatmentEvent && !event.completed) View.VISIBLE else View.GONE
+        // Only show rescan button for treatment events
+//        val isTreatmentEvent = event.eventType.startsWith("Treat: ") || event.eventType.equals("Treatment", ignoreCase = true)
+//        rescanButton.visibility = if (isTreatmentEvent && !event.completed) View.VISIBLE else View.GONE
 
         // Set button listeners
         completeButton.setOnClickListener {
@@ -1717,8 +1744,8 @@ class PlantManagementActivity : AppCompatActivity() {
                 if (updatedEvent.completed) {
                     rescanButton.visibility = View.GONE
                 } else {
-                    // Show rescan only for treatment events
-                    rescanButton.visibility = if (isTreatmentEvent) View.VISIBLE else View.GONE
+//                    rescanButton.visibility = if (isTreatmentEvent) View.VISIBLE else View.GONE
+
                 }
             }
 
@@ -1729,11 +1756,6 @@ class PlantManagementActivity : AppCompatActivity() {
                 "Task marked as incomplete"
             }
             Toast.makeText(this, statusMessage, Toast.LENGTH_SHORT).show()
-
-            // If this was a treatment event and now completed, ask if they want to rescan the plant
-            if (isTreatmentEvent && updatedEvent?.completed == true) {
-                askForRescan(event, plant?.type ?: "")
-            }
         }
 
         // Fix delete functionality to prevent crashes
@@ -1742,7 +1764,7 @@ class PlantManagementActivity : AppCompatActivity() {
                 // Show confirmation dialog
                 AlertDialog.Builder(this)
                     .setTitle("Delete Event")
-                    .setMessage("Are you sure you want to delete this ${event.eventType} task?")
+                    .setMessage("Are you sure you want to delete this task?")
                     .setPositiveButton("Delete") { confirmDialog, _ ->
                         try {
                             // First cancel any notification for this event
@@ -1799,6 +1821,7 @@ class PlantManagementActivity : AppCompatActivity() {
             .setPositiveButton("Close", null)
             .show()
     }
+
 
 
     private fun refreshPlantsList() {

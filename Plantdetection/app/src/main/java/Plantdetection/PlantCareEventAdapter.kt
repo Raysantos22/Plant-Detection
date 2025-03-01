@@ -175,23 +175,32 @@ class PlantCareEventAdapter(
             val plant = plantDatabaseManager.getPlant(event.plantId)
             val plantName = plant?.name ?: "Unknown plant"
 
-            // Set title based on event type and plant - with more descriptive treatment names
+            // Set title based on event type and plant - with specific treatment task names
             if (event.eventType.startsWith("Treat: ")) {
-                // Extract condition name and check if there's a specific task in the notes
+                // Extract condition name
                 val conditionName = event.eventType.substringAfter("Treat: ")
+                val condition = PlantConditionData.conditions[conditionName]
 
-                // Look for task name in notes (typically in format "TaskName: Description")
-                val taskName =
+                // Look for task name in notes
+                val taskName = if (event.notes.contains(":")) {
                     event.notes.split("\n\n").getOrNull(1)?.split(":")?.getOrNull(0)?.trim()
-                        ?: "Treatment"
+                } else null
 
-                // Create a more descriptive title that shows what action to take
-                eventTitle.text = "$taskName for $plantName"
+                if (taskName != null) {
+                    // If we found a specific task name, use it
+                    eventTitle.text = "$taskName for $plantName"
+                } else if (condition != null && condition.treatmentTasks.isNotEmpty()) {
+                    // If we didn't find a task name but have condition data, use first task
+                    eventTitle.text = "${condition.treatmentTasks[0].taskName} for $plantName"
+                } else {
+                    // Fallback with condition name
+                    eventTitle.text = "Treat $plantName for $conditionName"
+                }
 
-                // Add condition info to description
-                eventDescription.text = "For ${conditionName}"
+                // Set description to show condition name
+                eventDescription.text = "For $conditionName"
             } else {
-                // For non-treatment events, use standard formatting
+                // Standard event types
                 eventTitle.text = when (event.eventType.lowercase()) {
                     "watering" -> "Water $plantName"
                     "treatment" -> "Treat $plantName"
@@ -214,7 +223,7 @@ class PlantCareEventAdapter(
                 eventDescription.text = description
             }
 
-            // Set checkbox state (without triggering listener)
+            // Set checkbox state
             eventCompleteCheckbox.setOnCheckedChangeListener(null)
             eventCompleteCheckbox.isChecked = event.completed
 
@@ -242,22 +251,21 @@ class PlantCareEventAdapter(
 
             // Show rescan button only for treatment events that are in the future or today AND not completed
             if (rescanButton != null) {
-                val showRescan =
-                    (event.eventType.startsWith("Treat: ") || event.eventType.lowercase() == "treatment") &&
-                            (eventDay.time == today.time || eventDay.after(today)) &&
-                            !event.completed
+                val showRescan = (event.eventType.startsWith("Treat: ") || event.eventType.lowercase() == "treatment") &&
+                        (eventDay.time == today.time || eventDay.after(today)) &&
+                        !event.completed
 
                 rescanButton.visibility = if (showRescan) View.VISIBLE else View.GONE
             }
 
             // Show reschedule button only for future events
             if (rescheduleButton != null) {
-                rescheduleButton.visibility =
-                    if (eventDay.after(today) && !event.completed) View.VISIBLE else View.GONE
+                rescheduleButton.visibility = if (eventDay.after(today) && !event.completed) View.VISIBLE else View.GONE
             }
 
-            // Always show view schedule button
+            // Always show view schedule button if it exists
             viewScheduleButton?.visibility = View.VISIBLE
         }
+
     }
 }
