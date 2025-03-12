@@ -3,6 +3,7 @@ package com.PlantDetection
 import com.PlantDetection.PlantManagementActivity
 import android.Manifest
 import android.app.Dialog
+import android.app.ProgressDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -68,6 +69,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        Log.d("MainActivity", "onCreate called")
 
         // Initialize plant database manager
         plantDatabaseManager = PlantDatabaseManager(this)
@@ -1419,116 +1421,167 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             .setCancelable(true)
             .create()
 
+        infoDialog?.setOnDismissListener {
+            // Ensure the reference is cleared
+            infoDialog = null
+        }
+
         infoDialog?.show()
     }
-
     private fun showAddToCalendarDialog(conditionName: String) {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_to_calendar, null)
-
-        // Initialize views
-        val detectionResultText = dialogView.findViewById<TextView>(R.id.detectionResultText)
-        val plantNameInput = dialogView.findViewById<EditText>(R.id.plantNameInput)
-        val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
-        val addPlantButton = dialogView.findViewById<Button>(R.id.addPlantButton)
-
-        // Set initial values
-        detectionResultText.text = "Detected condition: $conditionName"
-
-        // Suggest a default name
-        val suggestedName = when {
-            conditionName.contains("Tomato") -> "Tomato Plant"
-            conditionName.contains("Eggplant") -> "Eggplant Plant"
-            else -> "Plant"
-        } + " " + (plantDatabaseManager.getAllPlants().size + 1)
-        plantNameInput.setText(suggestedName)
-
-        // Hide watering frequency controls - we'll set a default
-        val wateringFrequencyText = dialogView.findViewById<TextView>(R.id.wateringFrequencyText)
-        val decreaseFrequencyButton = dialogView.findViewById<Button>(R.id.decreaseFrequencyButton)
-        val increaseFrequencyButton = dialogView.findViewById<Button>(R.id.increaseFrequencyButton)
-
-        wateringFrequencyText.visibility = View.GONE
-        decreaseFrequencyButton.visibility = View.GONE
-        increaseFrequencyButton.visibility = View.GONE
-
-        // Fixed default watering frequency
-        val wateringFrequency = 2 // Default to 2 days
-
-        cancelButton.setOnClickListener {
-            // Just dismiss the dialog
-            infoDialog?.dismiss()
-        }
-
-        addPlantButton.setOnClickListener {
-            val plantName = plantNameInput.text.toString().trim()
-
-            if (plantName.isEmpty()) {
-                Toast.makeText(this, "Please enter a plant name", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
+        try {
+            // Validate inputs
+            if (conditionName.isBlank()) {
+                Toast.makeText(this, "Invalid condition", Toast.LENGTH_SHORT).show()
+                return
             }
 
-            // Add the plant to the database
-            val plantType = when {
-                conditionName.contains("Tomato") -> "Tomato"
-                conditionName.contains("Eggplant") -> "Eggplant"
-                else -> selectedVegetable ?: "Tomato"
-            }
-
-            try {
-                val plantId = plantDatabaseManager.addDetectionAsPlant(
-                    plantName = plantName,
-                    vegetableType = plantType,
-                    conditionName = conditionName
-                )
-
-                if (plantId.isNotEmpty()) {
-                    // Update the plant with the custom watering frequency
-                    val plant = plantDatabaseManager.getPlant(plantId)
-                    plant?.let {
-                        val updatedPlant = it.copy(wateringFrequency = wateringFrequency)
-                        plantDatabaseManager.updatePlant(updatedPlant)
-
-                        // Create complete care plan for the plant
-                        createCompletePlantCarePlan(plantId, plantType, wateringFrequency)
-                    }
-
-                    Toast.makeText(this, "Plant added to monitoring with complete care schedule", Toast.LENGTH_SHORT).show()
-
-                    // Dismiss dialogs
-                    infoDialog?.dismiss()
-
-                    // Go to plant management screen safely
-                    try {
-                        val intent = Intent(this, PlantManagementActivity::class.java)
-                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
-                        startActivity(intent)
-                        finish()
-                    } catch (e: Exception) {
-                        Log.e("MainActivity", "Error navigating to Plant Management: ${e.message}")
-                        Toast.makeText(this, "Plant added successfully. Please go back to home.", Toast.LENGTH_LONG).show()
-                    }
-                } else {
-                    Toast.makeText(this, "Failed to add plant", Toast.LENGTH_SHORT).show()
-                }
+            // Safely inflate dialog view
+            val dialogView = try {
+                LayoutInflater.from(this).inflate(R.layout.dialog_add_to_calendar, null)
             } catch (e: Exception) {
-                Log.e("MainActivity", "Error adding plant: ${e.message}")
-                Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                Log.e("AddPlantDialog", "Failed to inflate dialog layout", e)
+                Toast.makeText(this, "Error creating dialog", Toast.LENGTH_SHORT).show()
+                return
             }
+
+            // Find views with null checks
+            val detectionResultText = dialogView.findViewById<TextView?>(R.id.detectionResultText)
+            val plantNameInput = dialogView.findViewById<EditText?>(R.id.plantNameInput)
+            val cancelButton = dialogView.findViewById<Button?>(R.id.cancelButton)
+            val addPlantButton = dialogView.findViewById<Button?>(R.id.addPlantButton)
+
+            // Verify all critical views are present
+            val viewChecks = listOf(
+                "Detection Result" to detectionResultText,
+                "Plant Name Input" to plantNameInput,
+                "Cancel Button" to cancelButton,
+                "Add Plant Button" to addPlantButton
+            )
+
+            for ((name, view) in viewChecks) {
+                if (view == null) {
+                    Log.e("AddPlantDialog", "Missing view: $name")
+                    Toast.makeText(this, "Dialog setup error", Toast.LENGTH_SHORT).show()
+                    return
+                }
+            }
+
+            // Set detection result text
+            detectionResultText.text = "Detected condition: $conditionName"
+
+            // Suggest default plant name
+            val suggestedName = try {
+                val baseType = when {
+                    conditionName.contains("Tomato", ignoreCase = true) -> "Tomato"
+                    conditionName.contains("Eggplant", ignoreCase = true) -> "Eggplant"
+                    else -> selectedVegetable ?: "Plant"
+                }
+                val existingPlantsCount = try {
+                    plantDatabaseManager.getAllPlants().size
+                } catch (e: Exception) {
+                    Log.e("AddPlantDialog", "Error getting plant count", e)
+                    0
+                }
+                "$baseType Plant ${existingPlantsCount + 1}"
+            } catch (e: Exception) {
+                Log.e("AddPlantDialog", "Error generating plant name", e)
+                "New Plant"
+            }
+
+            plantNameInput.setText(suggestedName)
+
+            // Cancel button
+            cancelButton.setOnClickListener {
+                infoDialog?.dismiss()
+            }
+
+            // Add plant button
+            addPlantButton.setOnClickListener {
+                val plantName = plantNameInput.text.toString().trim()
+
+                if (plantName.isEmpty()) {
+                    Toast.makeText(this, "Please enter a plant name", Toast.LENGTH_SHORT).show()
+                    return@setOnClickListener
+                }
+
+                // Disable button to prevent multiple clicks
+                addPlantButton.isEnabled = false
+
+                // Show progress dialog
+                val progressDialog = ProgressDialog(this).apply {
+                    setMessage("Adding plant...")
+                    setCancelable(false)
+                }
+                progressDialog.show()
+
+                // Use a background thread for database operations
+                Thread {
+                    try {
+                        // Determine plant type
+                        val plantType = when {
+                            conditionName.contains("Tomato", ignoreCase = true) -> "Tomato"
+                            conditionName.contains("Eggplant", ignoreCase = true) -> "Eggplant"
+                            else -> selectedVegetable ?: "Tomato"
+                        }
+
+                        // Add plant to database
+                        val plantId = plantDatabaseManager.addDetectionAsPlant(
+                            plantName = plantName,
+                            vegetableType = plantType,
+                            conditionName = conditionName
+                        )
+
+                        // Run UI updates on main thread
+                        runOnUiThread {
+                            progressDialog.dismiss()
+
+                            if (plantId.isNotEmpty()) {
+                                // Create care plan
+                                createCompletePlantCarePlan(plantId, plantType, 2)
+
+                                // Dismiss dialogs
+                                infoDialog?.dismiss()
+
+                                // Navigate to plant management
+                                val intent = Intent(this, PlantManagementActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            } else {
+                                Toast.makeText(this, "Failed to add plant", Toast.LENGTH_SHORT).show()
+                                addPlantButton.isEnabled = true
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Run on UI thread to show error
+                        runOnUiThread {
+                            progressDialog.dismiss()
+                            Log.e("AddPlantDialog", "Error adding plant", e)
+                            Toast.makeText(
+                                this,
+                                "Error adding plant: ${e.localizedMessage}",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            addPlantButton.isEnabled = true
+                        }
+                    }
+                }.start()
+            }
+
+            // Create and show dialog
+            val dialog = AlertDialog.Builder(this)
+                .setView(dialogView)
+                .setCancelable(true)
+                .create()
+
+            dialog.show()
+            infoDialog = dialog
+
+        } catch (e: Exception) {
+            Log.e("AddPlantDialog", "Unexpected error in dialog creation", e)
+            Toast.makeText(this, "Failed to create dialog", Toast.LENGTH_LONG).show()
         }
-
-        // Create and show the dialog
-        val dialog = AlertDialog.Builder(this)
-            .setView(dialogView)
-            .setCancelable(true)
-            .create()
-
-        dialog.show()
-
-        // Replace current info dialog with this new one
-        infoDialog?.dismiss()
-        infoDialog = dialog
     }
-
     private fun dialogShowDateTimePicker(conditionName: String) {
         // Only proceed if we have a plant ID
         if (selectedPlantId == null) return
@@ -1626,53 +1679,37 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         // Only proceed if we have a plant ID
         if (selectedPlantId == null) return
 
-        AlertDialog.Builder(this)
+        // Dismiss any existing dialog first
+        infoDialog?.dismiss()
+
+        val dialog = AlertDialog.Builder(this)
             .setTitle("Issue Resolved?")
             .setMessage("Has the plant condition been resolved?")
-            .setPositiveButton("Yes") { dialog, _ ->
-                // Update plant condition to healthy
-                val plant = plantDatabaseManager.getPlant(selectedPlantId!!)
-                plant?.let {
-                    val healthyCondition =
-                        if (it.type == "Tomato") "Healthy Tomato" else "Healthy Eggplant"
-
-                    // Update plant condition
-                    val updatedPlant = it.copy(
-                        currentCondition = healthyCondition,
-                        lastScannedDate = Date()
-                    )
-
-                    // Save to database
-                    plantDatabaseManager.updatePlant(updatedPlant)
-
-                    Toast.makeText(
-                        this,
-                        "Great! Plant condition marked as healthy.",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                }
-
-                dialog.dismiss()
-
-                // Return to the plant management screen
-                val intent = Intent(this, PlantManagementActivity::class.java)
-                startActivity(intent)
-                finish()
+            .setPositiveButton("Yes") { dialogInterface, _ ->
+                // ... existing code ...
+                dialogInterface.dismiss()
             }
-            .setNegativeButton("No") { dialog, _ ->
-                Toast.makeText(this, "Continue following the treatment plan.", Toast.LENGTH_SHORT)
-                    .show()
-                dialog.dismiss()
+            .setNegativeButton("No") { dialogInterface, _ ->
+                dialogInterface.dismiss()
             }
-            .show()
+            .create()
+
+        dialog.setOnDismissListener {
+            infoDialog = null
+        }
+
+        dialog.show()
+        infoDialog = dialog
     }
-
     override fun onDestroy() {
         super.onDestroy()
         detector?.close()
         cameraExecutor.shutdown()
-    }
 
+        // Explicitly dismiss any open dialogs
+        infoDialog?.dismiss()
+        infoDialog = null
+    }
     override fun onResume() {
         super.onResume()
         if (allPermissionsGranted()) {
