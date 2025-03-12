@@ -257,42 +257,16 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                         !prevCondition.startsWith("Healthy")
             }
 
-            // Instead of setting a single primary condition, create a summarized status string
-            // that shows counts for each condition
-            val healthyConditions = detectionsByCondition.keys.filter { it.startsWith("Healthy") }
-            val diseaseConditions = detectionsByCondition.keys.filter { !it.startsWith("Healthy") }
-
-            // Build a status string like "2 Healthy, 1 Disease" instead of just "Healthy Eggplant"
-            val statusBuilder = StringBuilder()
-
-            // Add healthy plants count
-            val healthyCount = healthyConditions.sumOf { detectionsByCondition[it]?.size ?: 0 }
-            if (healthyCount > 0) {
-                statusBuilder.append("$healthyCount Healthy")
-            }
-
-            // Add disease plants count
-            val diseaseCount = diseaseConditions.sumOf { detectionsByCondition[it]?.size ?: 0 }
-            if (diseaseCount > 0) {
-                if (statusBuilder.isNotEmpty()) {
-                    statusBuilder.append(", ")
-                }
-                statusBuilder.append("$diseaseCount Diseased")
-            }
-
-            // Create the status string
-            val statusString = statusBuilder.toString()
-
-            // Set primary condition for database purposes - still use the highest priority one
+            // Set primary condition to the highest priority one (disease takes priority over healthy)
             val primaryCondition = getPrimaryCondition(detectionsByCondition.keys.toList())
 
-            // Check if this is a new status
-            val isNewCondition = plant.currentCondition != statusString
-            val isNowHealthy = diseaseCount == 0
+            // Check if this is a new primary condition
+            val isNewCondition = plant.currentCondition != primaryCondition
+            val isNowHealthy = primaryCondition.startsWith("Healthy")
 
-            // Update plant with new status string AND primary condition in notes
+            // Update plant with new primary condition
             val updatedPlant = it.copy(
-                currentCondition = statusString, // Use our custom status string like "2 Healthy, 1 Diseased"
+                currentCondition = primaryCondition,
                 lastScannedDate = Date()
             )
 
@@ -697,32 +671,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         detectionsByCondition: Map<String, List<BoundingBox>>,
         wateringFrequency: Int
     ): String {
-        // Create summary status string
-        val healthyConditions = detectionsByCondition.keys.filter { it.startsWith("Healthy") }
-        val diseaseConditions = detectionsByCondition.keys.filter { !it.startsWith("Healthy") }
-
-        // Build a status string like "2 Healthy, 1 Diseased" instead of just using primary condition
-        val statusBuilder = StringBuilder()
-
-        // Add healthy plants count
-        val healthyCount = healthyConditions.sumOf { detectionsByCondition[it]?.size ?: 0 }
-        if (healthyCount > 0) {
-            statusBuilder.append("$healthyCount Healthy")
-        }
-
-        // Add disease plants count
-        val diseaseCount = diseaseConditions.sumOf { detectionsByCondition[it]?.size ?: 0 }
-        if (diseaseCount > 0) {
-            if (statusBuilder.isNotEmpty()) {
-                statusBuilder.append(", ")
-            }
-            statusBuilder.append("$diseaseCount Diseased")
-        }
-
-        // Our custom status string
-        val statusString = statusBuilder.toString()
-
-        // Get primary condition for the plant record (still needed for some operations)
+        // Get primary condition for the plant record
         val conditions = detectionsByCondition.keys.toList()
         val primaryCondition = getPrimaryCondition(conditions)
 
@@ -745,7 +694,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             type = vegetableType,
             createdDate = Date(),
             lastScannedDate = Date(),
-            currentCondition = statusString, // Use our custom status string
+            currentCondition = primaryCondition,
             wateringFrequency = wateringFrequency,
             notes = notes
         )
@@ -1362,9 +1311,9 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
         }
 
-        // 1. Schedule watering for TODAY instead of tomorrow
+        // 1. Schedule watering for all plants
         val initialWateringDate = Calendar.getInstance().apply {
-            // No addition of days - set it to today
+            add(Calendar.DAY_OF_MONTH, 1)
             set(Calendar.HOUR_OF_DAY, 9)
             set(Calendar.MINUTE, 0)
             set(Calendar.SECOND, 0)
@@ -1394,7 +1343,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             plantDatabaseManager.addPlantCareEvent(wateringEvent)
         }
 
-        // Rest of the method remains the same...
         // 3. Schedule fertilizing every 2 weeks for all plants
         val fertilizingCalendar = Calendar.getInstance()
         fertilizingCalendar.time = initialWateringDate

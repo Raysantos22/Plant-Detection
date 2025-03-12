@@ -38,8 +38,7 @@ class PlantManagementActivity : AppCompatActivity() {
     private lateinit var selectedDateHeader: TextView
     private lateinit var noPlantsMessage: TextView
     private lateinit var noEventsMessage: TextView
-    private var currentPlantDetailsDialog: AlertDialog? = null
-    private var currentPlantIdShown: String? = null
+
     private lateinit var selectedDate: Date
     private var selectedPlantId: String? = null
 
@@ -785,17 +784,7 @@ class PlantManagementActivity : AppCompatActivity() {
                 statusBuilder.append("• $condition: $count plants")
             }
 
-            // If the currentCondition has our custom format like "2 Healthy, 1 Diseased",
-            // use it as the primary status and show details below
-            if (plant.currentCondition != null &&
-                (plant.currentCondition.contains("Healthy") || plant.currentCondition.contains("Diseased"))) {
-                // Use both the summary status and detailed status
-                val summaryStatus = plant.currentCondition
-                plantStatusText.text = "$summaryStatus\n\n$statusBuilder"
-            } else {
-                // Just use the detailed status
-                plantStatusText.text = statusBuilder.toString()
-            }
+            plantStatusText.text = statusBuilder.toString()
 
             // Color based on if any disease conditions exist
             val hasDisease = conditionCounts.keys.any { !it.contains("Healthy", ignoreCase = true) }
@@ -859,9 +848,6 @@ class PlantManagementActivity : AppCompatActivity() {
             loadEventsForSelectedDate()
 
             Toast.makeText(this, "Watering scheduled for today", Toast.LENGTH_SHORT).show()
-
-            // Refresh the dialog with updated data
-            refreshOpenPlantDetailsDialog(plant.id)
         }
 
         scanButton.setOnClickListener {
@@ -926,17 +912,7 @@ class PlantManagementActivity : AppCompatActivity() {
             .setCancelable(true)
             .create()
 
-        // Save reference to current dialog
-        currentPlantDetailsDialog = dialog
-        currentPlantIdShown = plant.id
-
         dialog.setOnDismissListener {
-            // Clear references when dialog is dismissed
-            if (currentPlantIdShown == plant.id) {
-                currentPlantDetailsDialog = null
-                currentPlantIdShown = null
-            }
-
             // Refresh events in case schedules were modified
             loadEventsForSelectedDate()
         }
@@ -2133,7 +2109,7 @@ class PlantManagementActivity : AppCompatActivity() {
         // Update button text based on current status
         completeButton.text = if (event.completed) "Mark Incomplete" else "Mark Complete"
 
-        // Check if event is in the future
+        // Check if event is in the future (remaining code stays the same)
         val today = Calendar.getInstance()
         today.set(Calendar.HOUR_OF_DAY, 0)
         today.set(Calendar.MINUTE, 0)
@@ -2162,14 +2138,7 @@ class PlantManagementActivity : AppCompatActivity() {
         val isTreatmentEvent = event.eventType.startsWith("Treat: ") || event.eventType.equals("Treatment", ignoreCase = true)
         rescanButton.visibility = if (isTreatmentEvent && !event.completed) View.GONE else View.GONE
 
-        // Create the dialog before setting up button listeners
-        val dialog = AlertDialog.Builder(this)
-            .setTitle("Event Details")
-            .setView(dialogView)
-            .setPositiveButton("Close", null)
-            .create()
-
-        // Set button listeners
+        // Set button listeners (remaining code stays the same)
         completeButton.setOnClickListener {
             // Don't allow completing future events
             if (isFutureEvent && !event.completed) {
@@ -2210,10 +2179,6 @@ class PlantManagementActivity : AppCompatActivity() {
             if (isTreatmentEvent && updatedEvent?.completed == true) {
                 askForRescan(event, plant?.type ?: "")
             }
-
-            // IMPORTANT: Refresh any active plant details dialogs
-            // This is the key addition that updates the plant details dialog when tasks are completed
-            refreshOpenPlantDetailsDialog(event.plantId)
         }
 
         // Fix delete functionality to prevent crashes
@@ -2236,10 +2201,7 @@ class PlantManagementActivity : AppCompatActivity() {
 
                                 // Dismiss both dialogs
                                 confirmDialog.dismiss()
-                                dialog.dismiss()
-
-                                // IMPORTANT: Refresh any active plant details dialogs
-                                refreshOpenPlantDetailsDialog(event.plantId)
+                                (deleteButton.parent.parent.parent as android.app.Dialog).dismiss()
                             } else {
                                 Toast.makeText(this, "Failed to delete event", Toast.LENGTH_SHORT).show()
                             }
@@ -2261,7 +2223,7 @@ class PlantManagementActivity : AppCompatActivity() {
             showRescheduleDialog(event)
 
             // Dismiss current dialog
-            dialog.dismiss()
+            (it.parent.parent.parent as android.app.Dialog).dismiss()
         }
 
         rescanButton.setOnClickListener {
@@ -2270,28 +2232,17 @@ class PlantManagementActivity : AppCompatActivity() {
                 startRescanActivity(event, plant.type)
 
                 // Dismiss dialog
-                dialog.dismiss()
+                (it.parent.parent.parent as android.app.Dialog).dismiss()
             } else {
                 Toast.makeText(this, "Plant information not available", Toast.LENGTH_SHORT).show()
             }
         }
 
-        dialog.show()
-    }
-    private fun refreshOpenPlantDetailsDialog(plantId: String) {
-        // Check if there's an open dialog for this plant
-        if (currentPlantDetailsDialog != null && currentPlantIdShown == plantId) {
-            // Get the updated plant data
-            val updatedPlant = plantDatabaseManager.getPlant(plantId)
-            if (updatedPlant != null) {
-                // Dismiss the current dialog
-                currentPlantDetailsDialog?.dismiss()
-
-                // Show a new dialog with updated data
-                currentPlantDetailsDialog = showPlantDetailsDialog(updatedPlant)
-                currentPlantIdShown = plantId
-            }
-        }
+        AlertDialog.Builder(this)
+            .setTitle("Event Details")
+            .setView(dialogView)
+            .setPositiveButton("Close", null)
+            .show()
     }
 
     private fun refreshPlantsList() {
