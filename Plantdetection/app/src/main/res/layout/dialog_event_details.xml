@@ -15,7 +15,6 @@
             android:text="Event Type"
             android:textColor="@color/dark_gray"
             android:textSize="14sp" />
-
         <TextView
             android:id="@+id/eventTypeText"
             android:layout_width="match_parent"
@@ -25,6 +24,27 @@
             android:textColor="@color/black"
             android:textSize="16sp"
             android:textStyle="bold" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Condition"
+            android:id="@+id/conditionHeaderText"
+            android:textColor="@color/dark_gray"
+            android:textSize="14sp"
+            android:visibility="gone"/>
+
+        <TextView
+            android:id="@+id/conditionNameText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Anthracnose"
+            android:textColor="@color/orange"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:visibility="gone"/>
+
 
         <TextView
             android:layout_width="wrap_content"
@@ -60,26 +80,6 @@
             android:textColor="@color/black"
             android:textSize="16sp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Condition"
-            android:id="@+id/conditionHeaderText"
-            android:textColor="@color/dark_gray"
-            android:textSize="14sp"
-            android:visibility="gone"/>
-
-        <TextView
-            android:id="@+id/conditionNameText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Anthracnose"
-            android:textColor="@color/orange"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:visibility="gone"/>
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -127,8 +127,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="4dp"
                 android:layout_weight="1"
-                android:text="Rescan Plant"
                 android:visibility="gone"
+                android:text="Rescan Plant"
                 android:textColor="@android:color/white" />
 
             <Button
@@ -139,6 +139,7 @@
                 android:layout_weight="1"
                 android:text="Reschedule"
                 android:visibility="gone"
+
                 android:textColor="@android:color/white" />
         </LinearLayout>
 

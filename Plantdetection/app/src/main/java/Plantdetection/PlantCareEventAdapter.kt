@@ -47,8 +47,7 @@ class PlantCareEventAdapter(
         private val eventTime: TextView = itemView.findViewById(R.id.eventTime)
         private val eventTitle: TextView = itemView.findViewById(R.id.eventTitle)
         private val eventDescription: TextView = itemView.findViewById(R.id.eventDescription)
-        private val eventCompleteCheckbox: CheckBox =
-            itemView.findViewById(R.id.eventCompleteCheckbox)
+        private val eventCompleteCheckbox: CheckBox = itemView.findViewById(R.id.eventCompleteCheckbox)
         private val eventDateText: TextView = itemView.findViewById(R.id.eventDateText)
         private val rescanButton: View? = itemView.findViewById(R.id.rescanButton)
         private val rescheduleButton: View? = itemView.findViewById(R.id.rescheduleButton)
@@ -170,37 +169,107 @@ class PlantCareEventAdapter(
                 eventDateText.visibility = View.GONE
             }
 
-            // Get plant name
-            val plantDatabaseManager = PlantDatabaseManager(itemView.context)
-            val plant = plantDatabaseManager.getPlant(event.plantId)
+            // Get plant info
+            val plantDatabase = PlantDatabaseManager(itemView.context)
+            val plant = plantDatabase.getPlant(event.plantId)
             val plantName = plant?.name ?: "Unknown plant"
+            val isPlantGroup = plantName.contains("(") && plantName.contains("plants")
 
-            // Set title based on event type and plant - with specific treatment task names
-            if (event.eventType.startsWith("Treat: ")) {
-                // Extract condition name
-                val conditionName = event.eventType.substringAfter("Treat: ")
-                val condition = PlantConditionData.conditions[conditionName]
+            // For plant groups, provide clearer information
+            if (isPlantGroup && plant != null) {
+                // Parse plant group details from notes
+                var targetPlantCount = 0
+                var totalPlantsInGroup = 0
+                var plantCountText = ""
 
-                // Look for task name in notes
-                val taskName = if (event.notes.contains(":")) {
-                    event.notes.split("\n\n").getOrNull(1)?.split(":")?.getOrNull(0)?.trim()
-                } else null
-
-                if (taskName != null) {
-                    // If we found a specific task name, use it
-                    eventTitle.text = "$taskName for $plantName"
-                } else if (condition != null && condition.treatmentTasks.isNotEmpty()) {
-                    // If we didn't find a task name but have condition data, use first task
-                    eventTitle.text = "${condition.treatmentTasks[0].taskName} for $plantName"
-                } else {
-                    // Fallback with condition name
-                    eventTitle.text = "Treat $plantName for $conditionName"
+                // Extract total plants in group from the plant name
+                val match = "\\((\\d+)\\s+plants".toRegex().find(plantName)
+                if (match != null) {
+                    totalPlantsInGroup = match.groupValues[1].toIntOrNull() ?: 0
                 }
 
-                // Set description to show condition name
-                eventDescription.text = "For $conditionName"
+                // If we have a condition, determine how many plants have this condition
+                if (event.conditionName != null) {
+                    val notesLines = plant.notes.split("\n")
+                    for (line in notesLines) {
+                        if (line.trim().startsWith("-") &&
+                            line.contains(event.conditionName, ignoreCase = true) &&
+                            line.contains("plants")) {
+                            val countPart = line.substringAfter(":").trim()
+                            targetPlantCount = countPart.substringBefore(" ").toIntOrNull() ?: 0
+
+                            // Format plant count text
+                            plantCountText = if (targetPlantCount == 1) {
+                                "(1 plant)"
+                            } else {
+                                "($targetPlantCount plants)"
+                            }
+
+                            break
+                        }
+                    }
+                }
+
+                // Set title and description based on event type
+                when {
+                    // Watering events apply to all plants
+                    event.eventType.equals("watering", ignoreCase = true) -> {
+                        eventTitle.text = "Water ${plant.name}"
+                        eventDescription.text = "Regular watering for all plants in group"
+                    }
+
+                    // Treatment events should clearly indicate which plants they apply to
+                    event.eventType.startsWith("Treat: ") || event.eventType.equals("treatment", ignoreCase = true) -> {
+                        val conditionName = event.conditionName ?:
+                        (if (event.eventType.startsWith("Treat: "))
+                            event.eventType.substringAfter("Treat: ")
+                        else "condition")
+
+                        // Extract task name if possible
+                        val taskName = if (event.notes.contains(":")) {
+                            event.notes.split("\n\n").getOrNull(1)?.split(":")?.getOrNull(0)?.trim() ?: "Treatment"
+                        } else "Treatment"
+
+                        // Set title with plant count
+                        if (plantCountText.isNotEmpty()) {
+                            eventTitle.text = "$taskName for $conditionName $plantCountText"
+                        } else {
+                            eventTitle.text = "$taskName for $conditionName"
+                        }
+
+                        // Description includes plant name for context
+                        eventDescription.text = "For plants in ${plant.name}"
+                    }
+
+                    // Scan events
+                    event.eventType.equals("scan", ignoreCase = true) -> {
+                        if (event.conditionName != null && plantCountText.isNotEmpty()) {
+                            eventTitle.text = "Scan for ${event.conditionName} $plantCountText"
+                            eventDescription.text = "In ${plant.name}"
+                        } else {
+                            eventTitle.text = "Scan all plants in ${plant.name}"
+                            eventDescription.text = event.notes.takeIf { it.isNotEmpty() } ?: "Regular scan"
+                        }
+                    }
+
+                    // Generic fertilizing, pruning, etc.
+                    else -> {
+                        // If maintenance task, apply to all plants
+                        val isMaintenanceTask = event.eventType.lowercase() in listOf("fertilize", "prune", "check")
+                        if (isMaintenanceTask) {
+                            eventTitle.text = "${event.eventType} all plants in ${plant.name}"
+                            eventDescription.text = "Regular maintenance"
+                        } else if (event.conditionName != null && plantCountText.isNotEmpty()) {
+                            eventTitle.text = "${event.eventType} for ${event.conditionName} $plantCountText"
+                            eventDescription.text = "In ${plant.name}"
+                        } else {
+                            eventTitle.text = "${event.eventType} for ${plant.name}"
+                            eventDescription.text = event.notes.takeIf { it.isNotEmpty() } ?: "No details"
+                        }
+                    }
+                }
             } else {
-                // Standard event types
+                // Single plant logic (unchanged)
                 eventTitle.text = when (event.eventType.lowercase()) {
                     "watering" -> "Water $plantName"
                     "treatment" -> "Treat $plantName"
@@ -212,7 +281,6 @@ class PlantCareEventAdapter(
                     else -> "${event.eventType} for $plantName"
                 }
 
-                // Set description
                 val description = if (event.conditionName != null) {
                     "For ${event.conditionName}"
                 } else if (event.notes.isNotEmpty()) {
@@ -231,7 +299,7 @@ class PlantCareEventAdapter(
             val isTodayOrPast = !eventDay.after(today)
             eventCompleteCheckbox.isEnabled = isTodayOrPast
 
-            // Apply completed style if needed
+            // Apply styles based on completion status
             if (event.completed) {
                 eventTitle.alpha = 0.6f
                 eventDescription.alpha = 0.6f
@@ -240,7 +308,7 @@ class PlantCareEventAdapter(
                 eventDescription.alpha = 1.0f
             }
 
-            // Apply future style if needed
+            // Apply future event style if needed
             if (!isTodayOrPast) {
                 eventTitle.alpha = 0.8f
                 eventDescription.alpha = 0.8f
@@ -249,23 +317,17 @@ class PlantCareEventAdapter(
                 itemView.setBackgroundResource(R.drawable.current_event_background)
             }
 
-            // Show rescan button only for treatment events that are in the future or today AND not completed
-            if (rescanButton != null) {
-                val showRescan = (event.eventType.startsWith("Treat: ") || event.eventType.lowercase() == "treatment") &&
-                        (eventDay.time == today.time || eventDay.after(today)) &&
-                        !event.completed
-
-                rescanButton.visibility = if (showRescan) View.VISIBLE else View.GONE
-            }
+            // Hide rescan button as requested
+            rescanButton?.visibility = View.GONE
 
             // Show reschedule button only for future events
             if (rescheduleButton != null) {
-                rescheduleButton.visibility = if (eventDay.after(today) && !event.completed) View.VISIBLE else View.GONE
+                rescheduleButton.visibility =
+                    if (eventDay.after(today) && !event.completed) View.VISIBLE else View.GONE
             }
 
-            // Always show view schedule button if it exists
-            viewScheduleButton?.visibility = View.VISIBLE
+            // Hide view schedule button as requested
+            viewScheduleButton?.visibility = View.GONE
         }
-
     }
 }
