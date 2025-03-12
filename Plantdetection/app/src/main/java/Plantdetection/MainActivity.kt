@@ -1,5 +1,6 @@
 package com.PlantDetection
 
+import com.PlantDetection.PlantManagementActivity
 import android.Manifest
 import android.app.Dialog
 import android.content.Intent
@@ -11,6 +12,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
@@ -27,6 +29,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.PlantDetection.Constants.LABELS_PATH
 import com.PlantDetection.Constants.MODEL_PATH
 import com.PlantDetection.databinding.ActivityMainBinding
@@ -235,6 +238,27 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             // Get current plant data
             val wasHealthy = plant.currentCondition?.startsWith("Healthy") ?: true
 
+            // Calculate total plants and conditions in new scan
+            val totalPlants = detectionsByCondition.values.sumOf { it.size }
+            val totalConditions = detectionsByCondition.size
+
+            // Check if the name format needs to be updated
+            val isPlantGroup = plant.name.contains("plants") && plant.name.contains("(")
+            val updatedName = if (isPlantGroup) {
+                // Extract the base name without the count info
+                val baseName = plant.name.substringBefore("(").trim()
+                // Update with new counts
+                "$baseName ($totalPlants plants, $totalConditions conditions)"
+            } else {
+                // If it wasn't a group before but is being scanned as multiple plants now,
+                // update the name format
+                if (totalPlants > 1) {
+                    "${plant.name} ($totalPlants plants, $totalConditions conditions)"
+                } else {
+                    plant.name
+                }
+            }
+
             // Get the previous conditions from notes (if any)
             val previousConditions = mutableMapOf<String, Int>()
             val notesLines = plant.notes.split("\n")
@@ -264,12 +288,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             val isNewCondition = plant.currentCondition != primaryCondition
             val isNowHealthy = primaryCondition.startsWith("Healthy")
 
-            // Update plant with new primary condition
-            val updatedPlant = it.copy(
-                currentCondition = primaryCondition,
-                lastScannedDate = Date()
-            )
-
             // Save new condition information in plant notes
             val conditionSummary = "Multiple plant detection (${Date()}):\n" +
                     detectionsByCondition.entries.joinToString("\n") { entry ->
@@ -280,10 +298,16 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             val baseNotes = plant.notes.substringBefore("Multiple plant detection").trim()
             val updatedNotes = if (baseNotes.isEmpty()) conditionSummary else "$baseNotes\n\n$conditionSummary"
 
-            val finalPlant = updatedPlant.copy(notes = updatedNotes)
+            // Update plant with new information
+            val updatedPlant = it.copy(
+                name = updatedName,
+                currentCondition = primaryCondition,
+                lastScannedDate = Date(),
+                notes = updatedNotes
+            )
 
             // Save to database
-            if (plantDatabaseManager.updatePlant(finalPlant)) {
+            if (plantDatabaseManager.updatePlant(updatedPlant)) {
                 // Create a scan event for the primary condition
                 val eventId = "scan_${plantId}_${System.currentTimeMillis()}"
                 val scanEvent = PlantDatabaseManager.PlantCareEvent(
@@ -298,6 +322,15 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
                 // Save event
                 plantDatabaseManager.addPlantCareEvent(scanEvent)
+
+                // Send broadcast to refresh plant management activity
+                val intent = Intent("com.PlantDetection.REFRESH_PLANT_STATUS")
+                intent.putExtra("PLANT_ID", plantId)
+                try {
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Error sending broadcast: ${e.message}")
+                }
 
                 // Create events for each additional condition
                 for ((condition, detections) in detectionsByCondition) {
@@ -316,34 +349,25 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     }
                 }
 
-                // Mark treatments as completed for conditions that are no longer present
-                for (resolvedCondition in resolvedConditions) {
-                    markTreatmentsForConditionAsCompleted(plantId, resolvedCondition)
-                }
+                // IMPORTANT: Cancel all existing care events (except completed ones)
+                // to recreate the care plan based on new conditions
+                cancelFutureCareEvents(plantId)
+
+                // Always recreate the complete plant care plan based on new conditions
+                createCompletePlantCarePlan(plantId, updatedPlant.type, updatedPlant.wateringFrequency)
 
                 // If plant was healthy and now has a disease
                 if (wasHealthy && !isNowHealthy) {
-                    // Create treatments for all diseased conditions
-                    for (condition in detectionsByCondition.keys) {
-                        if (!condition.startsWith("Healthy")) {
-                            createAutomaticTreatmentSchedule(plantId, condition)
-                        }
-                    }
-
                     // Show plant info dialog with all conditions
                     showMultiplePlantInfoDialog(detectionsByCondition, true, true)
-
                     Toast.makeText(this, "Treatment plans created for detected conditions", Toast.LENGTH_SHORT).show()
                 }
                 // If changing from diseased to healthy, show congratulations
                 else if (!wasHealthy && isNowHealthy) {
-                    // Mark all treatments as completed
-                    markRemainingTreatmentsAsCompleted(plantId)
-
                     // Show recovery dialog
                     AlertDialog.Builder(this)
                         .setTitle("Plants Recovered!")
-                        .setMessage("Great news! Your ${plant.name} plants have recovered and are now healthy. All treatments have been marked as completed.")
+                        .setMessage("Great news! Your ${updatedPlant.name} have recovered and are now healthy. All treatments have been updated.")
                         .setPositiveButton("View Plant") { _, _ ->
                             val intent = Intent(this, PlantManagementActivity::class.java)
                             intent.putExtra("OPEN_PLANT_ID", plantId)
@@ -355,32 +379,31 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 }
                 // If condition changed but still diseased, update treatment
                 else if (isNewCondition && !isNowHealthy) {
-                    // Mark old treatments as completed for conditions that are no longer present
-                    for (resolvedCondition in resolvedConditions) {
-                        markTreatmentsForConditionAsCompleted(plantId, resolvedCondition)
-                    }
-
-                    // Create new treatment plans for newly detected conditions
-                    for (condition in detectionsByCondition.keys) {
-                        if (!condition.startsWith("Healthy") &&
-                            !previousConditions.keys.contains(condition)) {
-                            createAutomaticTreatmentSchedule(plantId, condition)
-                        }
-                    }
-
                     // Show plant info dialog with all conditions
                     showMultiplePlantInfoDialog(detectionsByCondition, true, true)
-
                     Toast.makeText(this, "Treatment plans updated based on new scan", Toast.LENGTH_SHORT).show()
                 }
                 // Just a normal rescan with no change
                 else {
                     // Show plant info dialog with all conditions
                     showMultiplePlantInfoDialog(detectionsByCondition, true, true)
-
                     Toast.makeText(this, "Plant conditions updated", Toast.LENGTH_SHORT).show()
                 }
             }
+        }
+    }
+    private fun cancelExistingTreatmentTasks(plantId: String) {
+        val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
+
+        // Find incomplete treatment events
+        val pendingTreatments = allEvents.filter {
+            (it.eventType.startsWith("Treat: ") || it.eventType.equals("Treatment", ignoreCase = true)) &&
+                    !it.completed
+        }
+
+        // Delete each pending treatment task
+        for (event in pendingTreatments) {
+            plantDatabaseManager.deletePlantCareEvent(event.id)
         }
     }
     private fun markTreatmentsForConditionAsCompleted(plantId: String, conditionName: String) {
@@ -591,7 +614,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         detectionResultText.text = "Detected: $totalPlants plants with $totalConditions conditions"
 
         // Fixed default watering frequency
-        val wateringFrequency = 2 // Default to 2 days
+        val wateringFrequency = 1 // Default to 1 day
 
         // Hide watering frequency controls
         val wateringFrequencyText = dialogView.findViewById<TextView>(R.id.wateringFrequencyText)
@@ -609,9 +632,26 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             else -> selectedVegetable ?: "Tomato"
         }
 
-        // Suggest a default name
-        val suggestedName = "$vegetableType Group (${totalPlants} plants, ${totalConditions} conditions)"
-        plantNameInput.setText(suggestedName)
+        // Suggest a default name without the counts
+        val suggestedName = "$vegetableType Group"
+        plantNameInput.setText("")
+
+        // Add a notice that counts will be appended automatically
+        val noticeText = dialogView.findViewById<TextView>(R.id.noticeText) ?: TextView(this).apply {
+            id = R.id.noticeText
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(context, R.color.dark_gray))
+            text = "Plant count information will be added automatically to the name."
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(16, 8, 16, 16)
+            }
+            // Add to parent if it doesn't exist
+            val parent = plantNameInput.parent as? ViewGroup
+            parent?.addView(this, parent.indexOfChild(plantNameInput) + 1)
+        }
 
         cancelButton.setOnClickListener {
             // Just dismiss the dialog
@@ -619,16 +659,23 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
 
         addPlantButton.setOnClickListener {
-            val plantName = plantNameInput.text.toString().trim()
+            val basePlantName = plantNameInput.text.toString().trim()
 
-            if (plantName.isEmpty()) {
+            if (basePlantName.isEmpty()) {
                 Toast.makeText(this, "Please enter a plant name", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
+            // Always append the plant count information if it's not already included
+            val finalPlantName = if (!basePlantName.contains("(") || !basePlantName.contains("plants")) {
+                "$basePlantName (${totalPlants} plants, ${totalConditions} conditions)"
+            } else {
+                basePlantName
+            }
+
             // Add the multiple plants as a group
             val plantId = addMultiplePlantsAsGroup(
-                plantName = plantName,
+                plantName = finalPlantName,
                 vegetableType = vegetableType,
                 detectionsByCondition = detectionsByCondition,
                 wateringFrequency = wateringFrequency
@@ -678,8 +725,18 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         // Create a plant ID
         val plantId = "plant_${System.currentTimeMillis()}"
 
-        // Create plant notes with detailed detection information
+        // Ensure plant name contains the count info
         val totalPlants = detectionsByCondition.values.sumOf { it.size }
+        val totalConditions = detectionsByCondition.size
+
+        // Extract plant counts from name or use the detected counts
+        val finalPlantName = if (!plantName.contains("(") || !plantName.contains("plants")) {
+            "$plantName (${totalPlants} plants, ${totalConditions} conditions)"
+        } else {
+            plantName
+        }
+
+        // Create plant notes with detailed detection information
         val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
             "- $condition: ${detections.size} plants"
         }
@@ -690,7 +747,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         // Create the plant record
         val plant = PlantDatabaseManager.Plant(
             id = plantId,
-            name = plantName,
+            name = finalPlantName,
             type = vegetableType,
             createdDate = Date(),
             lastScannedDate = Date(),
@@ -717,8 +774,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 plantDatabaseManager.addPlantCareEvent(scanEvent)
             }
 
-            // Return the plant ID - DON'T create treatments here to avoid duplication
-            // The createCompletePlantCarePlan will handle creating all treatments
+            // Return the plant ID
             return plantId
         }
 
@@ -732,8 +788,19 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             val wasHealthy = plant.currentCondition?.startsWith("Healthy") ?: true
             val isNowHealthy = conditionName.startsWith("Healthy")
 
+            // Check if the name format needs to be updated (if it was a group before)
+            val isPlantGroup = plant.name.contains("plants") && plant.name.contains("(")
+            val updatedName = if (isPlantGroup) {
+                // For a single plant scan of what was previously a group,
+                // maintain the group status but note the current condition
+                plant.name
+            } else {
+                plant.name
+            }
+
             // Update plant condition
             val updatedPlant = it.copy(
+                name = updatedName,
                 currentCondition = conditionName,
                 lastScannedDate = Date()
             )
@@ -755,10 +822,24 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 // Save event
                 plantDatabaseManager.addPlantCareEvent(scanEvent)
 
-                // If changing from healthy to diseased, create treatment
-                if (wasHealthy && !isNowHealthy) {
-                    createAutomaticTreatmentSchedule(plantId, conditionName)
+                // Send broadcast to refresh plant management activity
+                val intent = Intent("com.PlantDetection.REFRESH_PLANT_STATUS")
+                intent.putExtra("PLANT_ID", plantId)
+                try {
+                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Error sending broadcast: ${e.message}")
+                }
 
+                // IMPORTANT: Cancel all existing care events (except completed ones)
+                // to recreate the care plan based on new conditions
+                cancelFutureCareEvents(plantId)
+
+                // Always recreate the complete plant care plan based on new conditions
+                createCompletePlantCarePlan(plantId, updatedPlant.type, updatedPlant.wateringFrequency)
+
+                // If changing from healthy to diseased
+                if (wasHealthy && !isNowHealthy) {
                     // Show plant info dialog with rescan flag = true
                     showPlantInfoDialog(conditionName, true, true)
 
@@ -770,13 +851,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 }
                 // If changing from diseased to healthy, show congratulations
                 else if (!wasHealthy && isNowHealthy) {
-                    // Mark any remaining treatment tasks as completed
-                    markRemainingTreatmentsAsCompleted(plantId)
-
                     // Show recovery dialog directly
                     AlertDialog.Builder(this)
                         .setTitle("Plant Recovered!")
-                        .setMessage("Great news! Your ${plant.name} has recovered and is now healthy. All treatments have been marked as completed.")
+                        .setMessage("Great news! Your ${updatedPlant.name} has recovered and is now healthy. Care plan has been updated.")
                         .setPositiveButton("View Plant") { _, _ ->
                             val intent = Intent(this, PlantManagementActivity::class.java)
                             intent.putExtra("OPEN_PLANT_ID", plantId)
@@ -786,14 +864,8 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                         .setNegativeButton("OK", null)
                         .show()
                 }
-                // If condition changed but still diseased, update treatment
+                // If condition changed but still diseased
                 else if (isNewCondition && !isNowHealthy) {
-                    // Mark old treatments as completed
-                    markRemainingTreatmentsAsCompleted(plantId)
-
-                    // Create new treatment plan
-                    createAutomaticTreatmentSchedule(plantId, conditionName)
-
                     // Show plant info dialog with rescan flag = true
                     showPlantInfoDialog(conditionName, true, true)
 
@@ -813,7 +885,31 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
         }
     }
+    private fun cancelFutureCareEvents(plantId: String) {
+        val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
 
+        // Get the start of today
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }.time
+
+        // Find incomplete events that are from today onwards
+        val futureEvents = allEvents.filter {
+            !it.completed && // Not completed
+                    !it.eventType.startsWith("Scan") && // Not a scan event (we keep scan history)
+                    it.date.after(todayStart) // In the future or today
+        }
+
+        // Delete each future event
+        for (event in futureEvents) {
+            plantDatabaseManager.deletePlantCareEvent(event.id)
+        }
+
+        Log.d("MainActivity", "Canceled ${futureEvents.size} future care events for plant $plantId")
+    }
     private fun markRemainingTreatmentsAsCompleted(plantId: String) {
         val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
 
@@ -833,122 +929,276 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
     }
 
-    private fun createAutomaticTreatmentSchedule(plantId: String, conditionName: String) {
-        // First check if treatments already exist for this condition to avoid duplication
-        val existingTreatments = plantDatabaseManager.getPlantCareEvents(plantId)
-            .filter { event ->
-                (event.eventType.startsWith("Treat: $conditionName") ||
-                        (event.eventType == "Treatment" && event.conditionName == conditionName)) &&
-                        !event.completed
-            }
+    // Modifications to createCompletePlantCarePlan and createAutomaticTreatmentSchedule
 
-        // If treatments already exist, don't create new ones
-        if (existingTreatments.isNotEmpty()) {
-            Log.d("PlantManagement", "Treatments already exist for $conditionName - skipping creation")
-            return
-        }
-
-        // Get the condition data
-        val condition = PlantConditionData.conditions[conditionName]
+    private fun createCompletePlantCarePlan(plantId: String, plantType: String, wateringFrequency: Int) {
+        val calendar = Calendar.getInstance()
         val plant = plantDatabaseManager.getPlant(plantId)
 
-        if (condition != null && plant != null) {
-            // Create a treatment plan title
-            val treatmentTitle = "Treatment Plan for ${condition.name}"
+        // Check if this is a plant group
+        val isPlantGroup = plant?.name?.contains("(") == true && plant.name.contains("plants")
+        var totalPlantsInGroup = 1
+        val diseaseConditions = mutableMapOf<String, Int>()
 
-            // Show a dialog to inform the user
-            AlertDialog.Builder(this)
-                .setTitle("Treatment Plan Created")
-                .setMessage("A treatment plan has been automatically created for the detected condition: ${condition.name}. Do you want to view the treatment details?")
-                .setPositiveButton("View Treatment Plan") { _, _ ->
-                    // Take the user to the plant management screen
-                    val intent = Intent(this, PlantManagementActivity::class.java)
-                    intent.putExtra("OPEN_PLANT_ID", plantId)
-                    intent.putExtra("SHOW_TREATMENT_PLAN", true)
-                    startActivity(intent)
-                }
-                .setNegativeButton("Not Now", null)
-                .show()
+        // For plant groups, extract condition counts (keep existing logic)
+        if (isPlantGroup && plant != null) {
+            // Extract total plant count from name
+            val match = "\\((\\d+)\\s+plants".toRegex().find(plant.name)
+            if (match != null) {
+                totalPlantsInGroup = match.groupValues[1].toIntOrNull() ?: 1
+            }
 
-            // Schedule treatments for each treatment task in the condition
-            for ((index, task) in condition.treatmentTasks.withIndex()) {
-                // Create initial treatment task for today
-                val taskId = "treatment_${plantId}_${System.currentTimeMillis() + index}"
-                val today = Calendar.getInstance()
-
-                // Set appropriate times for different tasks
-                when {
-                    task.taskName.contains(
-                        "Remove",
-                        ignoreCase = true
-                    ) -> today.set(Calendar.HOUR_OF_DAY, 10)
-
-                    task.taskName.contains(
-                        "Apply",
-                        ignoreCase = true
-                    ) -> today.set(Calendar.HOUR_OF_DAY, 17)
-
-                    else -> today.set(Calendar.HOUR_OF_DAY, 12)
-                }
-                today.set(Calendar.MINUTE, 0)
-                today.set(Calendar.SECOND, 0)
-
-                // Determine default treatment notes using the first treatment task for the condition
-                val defaultNotes = PlantConditionData.conditions[conditionName]
-                    ?.treatmentTasks?.firstOrNull()
-                    ?.let { firstTask ->
-                        "${firstTask.taskName}: ${firstTask.description}\n\nTreatment: ${
-                            firstTask.materials.joinToString(
-                                ", "
-                            )
-                        }\n\nInstructions:\n${firstTask.instructions.joinToString("\n- ", "- ")}"
-                    } ?: "No specific treatment details available"
-
-                // Create treatment event with disease name in title
-                val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
-                    id = taskId,
-                    plantId = plantId,
-                    eventType = "Treat: ${condition.name}",
-                    date = today.time,
-                    conditionName = condition.name,
-                    notes = defaultNotes,
-                    completed = false
-                )
-
-                // Add initial treatment task
-                plantDatabaseManager.addPlantCareEvent(treatmentEvent)
-
-                // Add follow-up tasks based on the schedule interval
-                if (task.scheduleInterval > 0) {
-                    val followUpCalendar = Calendar.getInstance()
-                    followUpCalendar.time = today.time
-
-                    // Create up to 3 follow-up tasks
-                    val maxFollowUps = 3
-
-                    for (followUpIndex in 1..maxFollowUps) {
-                        followUpCalendar.add(Calendar.DAY_OF_MONTH, task.scheduleInterval)
-
-                        val followUpId =
-                            "followup_${plantId}_${System.currentTimeMillis() + index + followUpIndex * 100}"
-                        val followUpEvent = PlantDatabaseManager.PlantCareEvent(
-                            id = followUpId,
-                            plantId = plantId,
-                            eventType = "Treat: ${condition.name}",
-                            date = followUpCalendar.time,
-                            conditionName = condition.name,
-                            notes = defaultNotes,
-                            completed = false
-                        )
-
-                        plantDatabaseManager.addPlantCareEvent(followUpEvent)
+            // Parse conditions from notes (keep existing logic)
+            val notesLines = plant.notes.split("\n")
+            for (line in notesLines) {
+                if (line.trim().startsWith("-") && line.contains(":") && line.contains("plants")) {
+                    val conditionName = line.substringAfter("-").substringBefore(":").trim()
+                    if (!conditionName.contains("Healthy", ignoreCase = true)) {
+                        val countPart = line.substringAfter(":").trim()
+                        val count = countPart.substringBefore(" ").toIntOrNull() ?: 0
+                        if (count > 0) {
+                            diseaseConditions[conditionName] = count
+                        }
                     }
                 }
             }
         }
+
+        // 1. Schedule watering for TODAY AND future days (keep existing logic)
+        val todayWatering = Calendar.getInstance().apply {
+            val currentHour = get(Calendar.HOUR_OF_DAY)
+            if (currentHour < 7) {
+                set(Calendar.HOUR_OF_DAY, 9)
+            } else {
+                add(Calendar.HOUR_OF_DAY, 2)
+            }
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+        }.time
+
+        plantDatabaseManager.scheduleWatering(plantId, todayWatering,
+            if (isPlantGroup) "Initial watering for all $totalPlantsInGroup plants" else "Initial watering")
+
+        // Future waterings
+        val wateringCalendar = Calendar.getInstance()
+        wateringCalendar.time = todayWatering
+        wateringCalendar.add(Calendar.DAY_OF_MONTH, wateringFrequency)
+
+        for (day in 1..30 step wateringFrequency) {
+            val wateringDate = wateringCalendar.time
+
+            val wateringId = "watering_${plantId}_${System.currentTimeMillis() + day}"
+            val wateringEvent = PlantDatabaseManager.PlantCareEvent(
+                id = wateringId,
+                plantId = plantId,
+                eventType = "Watering",
+                date = wateringDate,
+                notes = if (isPlantGroup) "Regular watering for all $totalPlantsInGroup plants" else "Regular watering",
+                completed = false
+            )
+
+            plantDatabaseManager.addPlantCareEvent(wateringEvent)
+
+            wateringCalendar.add(Calendar.DAY_OF_MONTH, wateringFrequency)
+        }
+
+        // 2. Schedule inspection task for TODAY
+        val todayInspection = Calendar.getInstance().apply {
+            add(Calendar.MINUTE, 30)
+        }.time
+
+        val inspectionId = "inspection_${plantId}_${System.currentTimeMillis()}"
+        val inspectionEvent = PlantDatabaseManager.PlantCareEvent(
+            id = inspectionId,
+            plantId = plantId,
+            eventType = "Inspect",
+            date = todayInspection,
+            notes = if (isPlantGroup)
+                "First day inspection: Check all $totalPlantsInGroup plants for signs of stress or damage"
+            else
+                "First day inspection: Check plant for signs of stress or damage",
+            completed = false
+        )
+        plantDatabaseManager.addPlantCareEvent(inspectionEvent)
+
+        // 3. Schedule fertilizing - first one 3 days from now
+        val fertilizingCalendar = Calendar.getInstance()
+        fertilizingCalendar.add(Calendar.DAY_OF_MONTH, 3)
+        fertilizingCalendar.set(Calendar.HOUR_OF_DAY, 10)
+
+        for (week in 1..4) {
+            val fertilizingId = "fertilizing_${plantId}_${System.currentTimeMillis() + week}"
+            val fertilizingEvent = PlantDatabaseManager.PlantCareEvent(
+                id = fertilizingId,
+                plantId = plantId,
+                eventType = "Fertilize",
+                date = fertilizingCalendar.time,
+                notes = if (isPlantGroup)
+                    "Apply balanced fertilizer to all $totalPlantsInGroup plants"
+                else
+                    "Apply balanced fertilizer according to package instructions",
+                completed = false
+            )
+
+            plantDatabaseManager.addPlantCareEvent(fertilizingEvent)
+
+            fertilizingCalendar.add(Calendar.DAY_OF_MONTH, 14)
+        }
+
+        // 4. Schedule maintenance checks - first one 5 days from now
+        val maintenanceCalendar = Calendar.getInstance()
+        maintenanceCalendar.add(Calendar.DAY_OF_MONTH, 5)
+        maintenanceCalendar.set(Calendar.HOUR_OF_DAY, 15)
+
+        for (check in 1..3) {
+            val maintenanceId = "maintenance_${plantId}_${System.currentTimeMillis() + check}"
+
+            val maintenanceType = if (plantType == "Tomato") "Prune" else "Inspect"
+            val notes = if (isPlantGroup) {
+                if (plantType == "Tomato")
+                    "Remove suckers and check for yellow leaves on all $totalPlantsInGroup plants"
+                else
+                    "Check all $totalPlantsInGroup plants for pests and remove damaged leaves"
+            } else {
+                if (plantType == "Tomato")
+                    "Remove suckers and check for yellow leaves"
+                else
+                    "Check for pests and remove damaged leaves"
+            }
+
+            val maintenanceEvent = PlantDatabaseManager.PlantCareEvent(
+                id = maintenanceId,
+                plantId = plantId,
+                eventType = maintenanceType,
+                date = maintenanceCalendar.time,
+                notes = notes,
+                completed = false
+            )
+
+            plantDatabaseManager.addPlantCareEvent(maintenanceEvent)
+
+            maintenanceCalendar.add(Calendar.DAY_OF_MONTH, 10)
+        }
+
+        // 5. If there are disease conditions, schedule treatments
+        if (diseaseConditions.isNotEmpty()) {
+            for ((conditionName, plantCount) in diseaseConditions) {
+                createAutomaticTreatmentSchedule(plantId, conditionName, plantCount)
+            }
+        } else if (!isPlantGroup && plant?.currentCondition != null && !plant.currentCondition.startsWith("Healthy")) {
+            createAutomaticTreatmentSchedule(plantId, plant.currentCondition, 1)
+        }
+
+        // 6. Schedule health scan every month, starting in 30 days
+        val scanCalendar = Calendar.getInstance()
+        scanCalendar.add(Calendar.MONTH, 1)
+        scanCalendar.set(Calendar.HOUR_OF_DAY, 14)
+
+        val scanId = "scan_${plantId}_${System.currentTimeMillis()}"
+        val scanEvent = PlantDatabaseManager.PlantCareEvent(
+            id = scanId,
+            plantId = plantId,
+            eventType = "Scan",
+            date = scanCalendar.time,
+            notes = if (isPlantGroup)
+                "Monthly health check scan for all $totalPlantsInGroup plants"
+            else
+                "Monthly health check scan",
+            completed = false
+        )
+
+        plantDatabaseManager.addPlantCareEvent(scanEvent)
     }
 
+    private fun createAutomaticTreatmentSchedule(
+        plantId: String,
+        conditionName: String,
+        plantCount: Int = 1
+    ) {
+        val condition = PlantConditionData.conditions[conditionName] ?: return
 
+        // Create an urgent task for today (only ONE task)
+        val urgentTask = condition.treatmentTasks.firstOrNull()
+        if (urgentTask != null) {
+            val treatmentTime = Calendar.getInstance().apply {
+                add(Calendar.HOUR_OF_DAY, 1)
+            }.time
+
+            val urgentTaskId = "urgent_treat_${plantId}_${conditionName}_${System.currentTimeMillis()}"
+            val plantCountText = if (plantCount == 1) "(1 plant)" else "($plantCount plants)"
+
+            val urgentTreatmentEvent = PlantDatabaseManager.PlantCareEvent(
+                id = urgentTaskId,
+                plantId = plantId,
+                eventType = "Treat: $conditionName",
+                date = treatmentTime,
+                conditionName = conditionName,
+                notes = "URGENT: ${urgentTask.taskName} for $conditionName $plantCountText\n\n${urgentTask.description}\n\nMaterials: ${urgentTask.materials.joinToString(", ")}\n\nInstructions:\n${urgentTask.instructions.joinToString("\n- ", "- ")}",
+                completed = false
+            )
+
+            plantDatabaseManager.addPlantCareEvent(urgentTreatmentEvent)
+        }
+
+        // Schedule follow-up treatments with more controlled spacing
+        for ((index, task) in condition.treatmentTasks.withIndex()) {
+            // Skip the first task as we've already added an urgent task
+            if (index == 0) continue
+
+            val scheduleDay = Calendar.getInstance()
+            scheduleDay.add(Calendar.DAY_OF_MONTH, index * 2) // Space out tasks
+
+            // Set appropriate times for different tasks
+            when {
+                task.taskName.contains("Remove", ignoreCase = true) -> scheduleDay.set(Calendar.HOUR_OF_DAY, 10)
+                task.taskName.contains("Apply", ignoreCase = true) -> scheduleDay.set(Calendar.HOUR_OF_DAY, 17)
+                else -> scheduleDay.set(Calendar.HOUR_OF_DAY, 12)
+            }
+            scheduleDay.set(Calendar.MINUTE, 0)
+            scheduleDay.set(Calendar.SECOND, 0)
+
+            val plantCountText = if (plantCount == 1) "(1 plant)" else "($plantCount plants)"
+            val taskId = "treatment_${plantId}_${conditionName}_${System.currentTimeMillis() + index}"
+
+            val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
+                id = taskId,
+                plantId = plantId,
+                eventType = "Treat: $conditionName",
+                date = scheduleDay.time,
+                conditionName = conditionName,
+                notes = "${task.taskName} for $conditionName $plantCountText\n\n${task.description}\n\nMaterials: ${task.materials.joinToString(", ")}\n\nInstructions:\n${task.instructions.joinToString("\n- ", "- ")}",
+                completed = false
+            )
+
+            plantDatabaseManager.addPlantCareEvent(treatmentEvent)
+
+            // Add follow-up tasks with controlled scheduling if the task has a schedule interval
+            if (task.scheduleInterval > 0) {
+                val followUpCalendar = Calendar.getInstance()
+                followUpCalendar.time = scheduleDay.time
+
+                // Limit to 2 follow-up tasks instead of 3
+                val maxFollowUps = 2
+
+                for (followUpIndex in 1..maxFollowUps) {
+                    followUpCalendar.add(Calendar.DAY_OF_MONTH, task.scheduleInterval)
+
+                    val followUpId = "followup_${plantId}_${conditionName}_${System.currentTimeMillis() + followUpIndex * 100}"
+                    val followUpEvent = PlantDatabaseManager.PlantCareEvent(
+                        id = followUpId,
+                        plantId = plantId,
+                        eventType = "Treat: $conditionName",
+                        date = followUpCalendar.time,
+                        conditionName = conditionName,
+                        notes = "Follow-up #$followUpIndex: ${task.taskName} $plantCountText\n\n${task.description}\n\nMaterials: ${task.materials.joinToString(", ")}\n\nInstructions:\n${task.instructions.joinToString("\n- ", "- ")}",
+                        completed = false
+                    )
+
+                    plantDatabaseManager.addPlantCareEvent(followUpEvent)
+                }
+            }
+        }
+    }
     private fun startCamera() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
@@ -1278,218 +1528,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         infoDialog?.dismiss()
         infoDialog = dialog
     }
-    private fun createCompletePlantCarePlan(plantId: String, plantType: String, wateringFrequency: Int) {
-        val calendar = Calendar.getInstance()
-        val plant = plantDatabaseManager.getPlant(plantId)
 
-        // Check if this is a plant group
-        val isPlantGroup = plant?.name?.contains("(") == true && plant.name.contains("plants")
-        var totalPlantsInGroup = 1
-        val diseaseConditions = mutableMapOf<String, Int>()
-
-        // For plant groups, extract condition counts
-        if (isPlantGroup && plant != null) {
-            // Extract total plant count from name
-            val match = "\\((\\d+)\\s+plants".toRegex().find(plant.name)
-            if (match != null) {
-                totalPlantsInGroup = match.groupValues[1].toIntOrNull() ?: 1
-            }
-
-            // Parse conditions from notes
-            val notesLines = plant.notes.split("\n")
-            for (line in notesLines) {
-                if (line.trim().startsWith("-") && line.contains(":") && line.contains("plants")) {
-                    val conditionName = line.substringAfter("-").substringBefore(":").trim()
-                    if (!conditionName.contains("Healthy", ignoreCase = true)) {
-                        val countPart = line.substringAfter(":").trim()
-                        val count = countPart.substringBefore(" ").toIntOrNull() ?: 0
-                        if (count > 0) {
-                            diseaseConditions[conditionName] = count
-                        }
-                    }
-                }
-            }
-        }
-
-        // 1. Schedule watering for all plants
-        val initialWateringDate = Calendar.getInstance().apply {
-            add(Calendar.DAY_OF_MONTH, 1)
-            set(Calendar.HOUR_OF_DAY, 9)
-            set(Calendar.MINUTE, 0)
-            set(Calendar.SECOND, 0)
-        }.time
-
-        plantDatabaseManager.scheduleWatering(plantId, initialWateringDate,
-            if (isPlantGroup) "Initial watering for all $totalPlantsInGroup plants" else "Initial watering")
-
-        // 2. Schedule regular watering for the next 30 days
-        val wateringCalendar = Calendar.getInstance()
-        wateringCalendar.time = initialWateringDate
-
-        for (day in 2..30 step wateringFrequency) {
-            wateringCalendar.add(Calendar.DAY_OF_MONTH, wateringFrequency)
-            val wateringDate = wateringCalendar.time
-
-            val wateringId = "watering_${plantId}_${System.currentTimeMillis() + day}"
-            val wateringEvent = PlantDatabaseManager.PlantCareEvent(
-                id = wateringId,
-                plantId = plantId,
-                eventType = "Watering",
-                date = wateringDate,
-                notes = if (isPlantGroup) "Regular watering for all $totalPlantsInGroup plants" else "Regular watering",
-                completed = false
-            )
-
-            plantDatabaseManager.addPlantCareEvent(wateringEvent)
-        }
-
-        // 3. Schedule fertilizing every 2 weeks for all plants
-        val fertilizingCalendar = Calendar.getInstance()
-        fertilizingCalendar.time = initialWateringDate
-        fertilizingCalendar.add(Calendar.DAY_OF_MONTH, 7) // First fertilizing after 1 week
-        fertilizingCalendar.set(Calendar.HOUR_OF_DAY, 10) // Set to 10 AM
-
-        for (week in 1..4) {
-            val fertilizingId = "fertilizing_${plantId}_${System.currentTimeMillis() + week}"
-            val fertilizingEvent = PlantDatabaseManager.PlantCareEvent(
-                id = fertilizingId,
-                plantId = plantId,
-                eventType = "Fertilize",
-                date = fertilizingCalendar.time,
-                notes = if (isPlantGroup)
-                    "Apply balanced fertilizer to all $totalPlantsInGroup plants"
-                else
-                    "Apply balanced fertilizer according to package instructions",
-                completed = false
-            )
-
-            plantDatabaseManager.addPlantCareEvent(fertilizingEvent)
-
-            // Next fertilizing in 2 weeks
-            fertilizingCalendar.add(Calendar.DAY_OF_MONTH, 14)
-        }
-
-        // 4. Schedule maintenance checks every 10 days for all plants
-        val maintenanceCalendar = Calendar.getInstance()
-        maintenanceCalendar.time = initialWateringDate
-        maintenanceCalendar.add(Calendar.DAY_OF_MONTH, 10)
-        maintenanceCalendar.set(Calendar.HOUR_OF_DAY, 15) // Set to 3 PM
-
-        for (check in 1..3) {
-            val maintenanceId = "maintenance_${plantId}_${System.currentTimeMillis() + check}"
-
-            val maintenanceType = if (plantType == "Tomato") "Prune" else "Inspect"
-            val notes = if (isPlantGroup) {
-                if (plantType == "Tomato")
-                    "Remove suckers and check for yellow leaves on all $totalPlantsInGroup plants"
-                else
-                    "Check all $totalPlantsInGroup plants for pests and remove damaged leaves"
-            } else {
-                if (plantType == "Tomato")
-                    "Remove suckers and check for yellow leaves"
-                else
-                    "Check for pests and remove damaged leaves"
-            }
-
-            val maintenanceEvent = PlantDatabaseManager.PlantCareEvent(
-                id = maintenanceId,
-                plantId = plantId,
-                eventType = maintenanceType,
-                date = maintenanceCalendar.time,
-                notes = notes,
-                completed = false
-            )
-
-            plantDatabaseManager.addPlantCareEvent(maintenanceEvent)
-
-            // Next maintenance in 10 days
-            maintenanceCalendar.add(Calendar.DAY_OF_MONTH, 10)
-        }
-
-        // 5. Schedule specific treatments for disease conditions in plant groups
-        if (isPlantGroup && diseaseConditions.isNotEmpty()) {
-            val treatmentCalendar = Calendar.getInstance()
-            treatmentCalendar.add(Calendar.DAY_OF_MONTH, 2) // Start treatments in 2 days
-            treatmentCalendar.set(Calendar.HOUR_OF_DAY, 16) // Set to 4 PM
-
-            // Create treatment tasks for each disease
-            for ((conditionName, plantCount) in diseaseConditions) {
-                val condition = PlantConditionData.conditions[conditionName]
-                if (condition != null) {
-                    // Schedule treatment tasks
-                    for ((index, task) in condition.treatmentTasks.withIndex()) {
-                        // Increment time slightly for each task to avoid duplicates
-                        treatmentCalendar.add(Calendar.HOUR_OF_DAY, index % 3)
-
-                        val plantCountText = if (plantCount == 1) "(1 plant)" else "($plantCount plants)"
-
-                        val taskId = "treatment_${plantId}_${conditionName}_${System.currentTimeMillis() + index}"
-                        val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
-                            id = taskId,
-                            plantId = plantId,
-                            eventType = "Treat: $conditionName",
-                            date = treatmentCalendar.time,
-                            conditionName = conditionName,
-                            notes = "${task.taskName} for $conditionName $plantCountText:\n\n${task.description}\n\nMaterials: ${task.materials.joinToString(", ")}\n\nInstructions:\n${task.instructions.joinToString("\n- ", "- ")}",
-                            completed = false
-                        )
-
-                        plantDatabaseManager.addPlantCareEvent(treatmentEvent)
-
-                        // Add follow-up treatments
-                        if (task.scheduleInterval > 0) {
-                            val followUpCalendar = Calendar.getInstance()
-                            followUpCalendar.time = treatmentCalendar.time
-
-                            for (followUp in 1..3) {
-                                followUpCalendar.add(Calendar.DAY_OF_MONTH, task.scheduleInterval)
-
-                                val followUpId = "followup_${plantId}_${conditionName}_${System.currentTimeMillis() + index + followUp * 100}"
-                                val followUpEvent = PlantDatabaseManager.PlantCareEvent(
-                                    id = followUpId,
-                                    plantId = plantId,
-                                    eventType = "Treat: $conditionName",
-                                    date = followUpCalendar.time,
-                                    conditionName = conditionName,
-                                    notes = "Follow-up #$followUp: ${task.taskName} for $conditionName $plantCountText\n\n${task.description}\n\nMaterials: ${task.materials.joinToString(", ")}\n\nInstructions:\n${task.instructions.joinToString("\n- ", "- ")}",
-                                    completed = false
-                                )
-
-                                plantDatabaseManager.addPlantCareEvent(followUpEvent)
-                            }
-                        }
-                    }
-
-                    // Move to next day for next condition's treatments
-                    treatmentCalendar.add(Calendar.DAY_OF_MONTH, 1)
-                }
-            }
-        } else if (!isPlantGroup && plant?.currentCondition != null && !plant.currentCondition.startsWith("Healthy")) {
-            // For regular plants with disease, create treatment plan
-            createAutomaticTreatmentSchedule(plantId, plant.currentCondition)
-        }
-
-        // 6. Schedule health scan every month for all plants
-        val scanCalendar = Calendar.getInstance()
-        scanCalendar.time = initialWateringDate
-        scanCalendar.add(Calendar.MONTH, 1)
-        scanCalendar.set(Calendar.HOUR_OF_DAY, 14) // Set to 2 PM
-
-        val scanId = "scan_${plantId}_${System.currentTimeMillis()}"
-        val scanEvent = PlantDatabaseManager.PlantCareEvent(
-            id = scanId,
-            plantId = plantId,
-            eventType = "Scan",
-            date = scanCalendar.time,
-            notes = if (isPlantGroup)
-                "Monthly health check scan for all $totalPlantsInGroup plants"
-            else
-                "Monthly health check scan",
-            completed = false
-        )
-
-        plantDatabaseManager.addPlantCareEvent(scanEvent)
-    }
     private fun dialogShowDateTimePicker(conditionName: String) {
         // Only proceed if we have a plant ID
         if (selectedPlantId == null) return

@@ -39,7 +39,13 @@
         android:inputType="text"
         android:maxLines="1"
         android:textSize="16sp" />
-
+    <TextView
+        android:id="@+id/noticeText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:textColor="#333333"
+        android:textSize="16sp" />
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

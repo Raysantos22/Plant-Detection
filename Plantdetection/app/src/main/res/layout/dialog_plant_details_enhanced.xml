@@ -97,6 +97,8 @@
             android:textSize="16sp"
             android:textStyle="bold" />
 
+        a
+
         <TextView
             android:id="@+id/plantStatusText"
             android:layout_width="match_parent"

@@ -2,7 +2,10 @@ package com.PlantDetection
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Typeface
 import android.os.Bundle
 import android.text.Html
@@ -16,6 +19,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.PlantDetection.R
@@ -90,6 +94,16 @@ class PlantManagementActivity : AppCompatActivity() {
 
         // Set up listeners
         setupListeners()
+
+        // Register broadcast receiver for status updates
+        try {
+            LocalBroadcastManager.getInstance(this).registerReceiver(
+                refreshReceiver,
+                IntentFilter("com.PlantDetection.REFRESH_PLANT_STATUS")
+            )
+        } catch (e: Exception) {
+            Log.e("PlantManagement", "Error registering receiver: ${e.message}")
+        }
 
         // Handle direct opening for a specific plant
         handleDirectOpen()
@@ -723,6 +737,9 @@ class PlantManagementActivity : AppCompatActivity() {
         }
     }
     private fun showPlantDetailsDialog(plant: PlantDatabaseManager.Plant): AlertDialog {
+        // Always get the freshest plant data from database to ensure status is up-to-date
+        val freshPlant = plantDatabaseManager.getPlant(plant.id) ?: plant
+
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_plant_details_enhanced, null)
 
         // Main info section views
@@ -752,16 +769,36 @@ class PlantManagementActivity : AppCompatActivity() {
         val noHistoryTasksMsg = dialogView.findViewById<TextView>(R.id.noHistoryTasksMsg)
 
         // Set plant details
-        plantNameText.text = plant.name
-        plantTypeText.text = plant.type
+        plantNameText.text = freshPlant.name
+        plantTypeText.text = freshPlant.type
 
         // Check if this is a plant group
-        val isPlantGroup = plant.name.contains("(") && plant.name.contains("plants")
+        val isPlantGroup = freshPlant.name.contains("(") && freshPlant.name.contains("plants")
 
         if (isPlantGroup) {
-            // Parse condition counts from notes
+            // Get the most recent detection report from notes
+            val mostRecentDetection = freshPlant.notes.split("\n\n")
+                .filter { it.contains("Multiple plant detection") }
+                .maxByOrNull {
+                    // Extract date if possible
+                    val dateMatch = "\\(([^)]+)\\)".toRegex().find(it)
+                    dateMatch?.groupValues?.getOrNull(1)?.let { dateStr ->
+                        try {
+                            SimpleDateFormat("EEE MMM dd HH:mm:ss z yyyy", Locale.US).parse(dateStr)?.time ?: 0L
+                        } catch (e: Exception) {
+                            0L
+                        }
+                    } ?: 0L
+                } ?: ""
+
+            // Parse condition counts from most recent detection or all notes if no specific detection
+            val notesLines = if (mostRecentDetection.isNotEmpty()) {
+                mostRecentDetection.split("\n")
+            } else {
+                freshPlant.notes.split("\n")
+            }
+
             val conditionCounts = mutableMapOf<String, Int>()
-            val notesLines = plant.notes.split("\n")
 
             for (line in notesLines) {
                 if (line.trim().startsWith("-") && line.contains(":") && line.contains("plants")) {
@@ -784,6 +821,11 @@ class PlantManagementActivity : AppCompatActivity() {
                 statusBuilder.append("• $condition: $count plants")
             }
 
+            // Ensure we show something even if parsing failed
+            if (statusBuilder.isEmpty()) {
+                statusBuilder.append("• ${freshPlant.currentCondition ?: "Unknown condition"}")
+            }
+
             plantStatusText.text = statusBuilder.toString()
 
             // Color based on if any disease conditions exist
@@ -795,11 +837,11 @@ class PlantManagementActivity : AppCompatActivity() {
             }
             plantStatusText.setTextColor(ContextCompat.getColor(this, statusColor))
         } else {
-            // Regular single plant - use the original logic
-            plantStatusText.text = plant.currentCondition ?: "No recent scan"
+            // Regular single plant - use the original logic with freshest data
+            plantStatusText.text = freshPlant.currentCondition ?: "No recent scan"
 
             // Original coloring logic
-            val statusColor = if (plant.currentCondition == null || plant.currentCondition?.startsWith("Healthy") == true) {
+            val statusColor = if (freshPlant.currentCondition == null || freshPlant.currentCondition?.startsWith("Healthy") == true) {
                 R.color.app_dark_green
             } else {
                 R.color.orange
@@ -809,7 +851,7 @@ class PlantManagementActivity : AppCompatActivity() {
 
         // Set next watering date with AM/PM format
         val dateFormat = SimpleDateFormat("EEE, MMM d, yyyy h:mm a", Locale.getDefault())
-        nextWateringText.text = plant.nextWateringDate?.let {
+        nextWateringText.text = freshPlant.nextWateringDate?.let {
             "Next watering: ${dateFormat.format(it)}"
         } ?: "No scheduled watering"
 
@@ -835,17 +877,20 @@ class PlantManagementActivity : AppCompatActivity() {
         }
 
         // Load care schedule data with group plant awareness
-        loadPlantCareSchedule(plant, upcomingTasksList, activeTasksList, historyTasksList,
+        loadPlantCareSchedule(freshPlant, upcomingTasksList, activeTasksList, historyTasksList,
             noUpcomingTasksMsg, noActiveTasksMsg, noHistoryTasksMsg, isPlantGroup)
 
         // Set button listeners
         waterNowButton.setOnClickListener {
             // Schedule watering for today
             val now = Calendar.getInstance().time
-            plantDatabaseManager.scheduleWatering(plant.id, now, "Manual watering")
+            plantDatabaseManager.scheduleWatering(freshPlant.id, now, "Manual watering")
 
             // Reload events
             loadEventsForSelectedDate()
+
+            // Update the next watering text
+            nextWateringText.text = "Next watering: ${dateFormat.format(now)}"
 
             Toast.makeText(this, "Watering scheduled for today", Toast.LENGTH_SHORT).show()
         }
@@ -853,15 +898,15 @@ class PlantManagementActivity : AppCompatActivity() {
         scanButton.setOnClickListener {
             // Open scan activity with this plant's information
             val intent = Intent(this, MainActivity::class.java)
-            intent.putExtra("SELECTED_VEGETABLE", plant.type)
-            intent.putExtra("SELECTED_PLANT_ID", plant.id)
+            intent.putExtra("SELECTED_VEGETABLE", freshPlant.type)
+            intent.putExtra("SELECTED_PLANT_ID", freshPlant.id)
             startActivity(intent)
         }
 
         // Add treatment button - only show if a condition is present that's not healthy
         if (isPlantGroup) {
             // For plant groups, show treatment if any plant has a disease
-            val hasDiseasedPlants = plant.notes.split("\n")
+            val hasDiseasedPlants = freshPlant.notes.split("\n")
                 .any { line ->
                     line.trim().startsWith("-") &&
                             !line.contains("Healthy", ignoreCase = true) &&
@@ -871,8 +916,8 @@ class PlantManagementActivity : AppCompatActivity() {
             addTreatmentButton.visibility = if (hasDiseasedPlants) View.VISIBLE else View.GONE
         } else {
             // Regular single plant logic
-            addTreatmentButton.visibility = if (plant.currentCondition != null &&
-                !plant.currentCondition.startsWith("Healthy")) {
+            addTreatmentButton.visibility = if (freshPlant.currentCondition != null &&
+                !freshPlant.currentCondition.startsWith("Healthy")) {
                 View.VISIBLE
             } else {
                 View.GONE
@@ -887,14 +932,14 @@ class PlantManagementActivity : AppCompatActivity() {
         addTreatmentButton.setOnClickListener {
             if (isPlantGroup) {
                 // For plant groups, show treatment options for all diseased conditions
-                showTreatmentOptionsForGroupPlant(plant)
+                showTreatmentOptionsForGroupPlant(freshPlant)
             } else {
                 // Regular single plant logic
-                val conditionName = plant.currentCondition ?: return@setOnClickListener
+                val conditionName = freshPlant.currentCondition ?: return@setOnClickListener
                 val condition = PlantConditionData.conditions[conditionName]
 
                 if (condition != null) {
-                    showAddTreatmentTasksDialog(plant, condition)
+                    showAddTreatmentTasksDialog(freshPlant, condition)
                 } else {
                     Toast.makeText(this, "No treatment data available for this condition", Toast.LENGTH_SHORT).show()
                 }
@@ -1073,6 +1118,22 @@ class PlantManagementActivity : AppCompatActivity() {
                 addViewAllButton(historyTasksList) {
                     showFullTaskList(plant, "Task History", historyEvents, isPlantGroup)
                 }
+            }
+        }
+    }
+    private val refreshReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            // Refresh the plants list to update status
+            refreshPlantsList()
+
+            // If there's a specific plant ID, highlight it
+            val plantId = intent.getStringExtra("PLANT_ID")
+            if (plantId != null) {
+                selectedPlantId = plantId
+                plantAdapter.updateSelectedPlantId(plantId)
+
+                // Reload events for the selected date filtered by this plant
+                loadEventsForSelectedDate()
             }
         }
     }
@@ -2246,8 +2307,11 @@ class PlantManagementActivity : AppCompatActivity() {
     }
 
     private fun refreshPlantsList() {
+        // Get fresh data from the database
+        val updatedPlants = plantDatabaseManager.getAllPlants()
+
         // Update adapter with fresh data
-        plantAdapter.updatePlants(plantDatabaseManager.getAllPlants())
+        plantAdapter.updatePlants(updatedPlants)
 
         // Update visibility
         if (plantAdapter.itemCount == 0) {
@@ -2283,12 +2347,21 @@ class PlantManagementActivity : AppCompatActivity() {
         // TODO: In the future, we could add custom date decorators to show event counts
         // This would require extending the CalendarView or using a third-party calendar library
     }
-
+    override fun onDestroy() {
+        super.onDestroy()
+        // Unregister the receiver
+        try {
+            LocalBroadcastManager.getInstance(this).unregisterReceiver(refreshReceiver)
+        } catch (e: Exception) {
+            Log.e("PlantManagement", "Error unregistering receiver: ${e.message}")
+        }
+    }
     override fun onResume() {
         super.onResume()
-        // Refresh data in case it was changed in other activities
         refreshPlantsList()
         loadEventsForSelectedDate()
         updateCalendarWithEvents()
     }
 }
+
+// Refresh data in case it was changed in other activities
