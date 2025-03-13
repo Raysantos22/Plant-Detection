@@ -44,6 +44,7 @@
         <!-- Plant Management Activity -->
         <activity
             android:name=".PlantManagementActivity"
+
             android:exported="false" />
 
         <activity
@@ -59,10 +60,6 @@
         <activity
             android:name=".ConditionDetailActivity"
             android:exported="false">
-            <intent-filter>
-                <action android:name="com.PlantDetection.OPEN_CONDITION_DETAILS" />
-                <category android:name="android.intent.category.DEFAULT" />
-            </intent-filter>
         </activity>
 
         <!-- Notification Receivers -->
