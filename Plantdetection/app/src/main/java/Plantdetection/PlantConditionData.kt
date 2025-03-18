@@ -648,9 +648,9 @@ object PlantConditionData {
                 )
             )
         ),
-        "White Fly" to PlantCondition(
-            "White Fly",
-            "Small, white flying insects that feed on plant sap and excrete honeydew, leading to sooty mold.",
+        "Hippodamia Variegata" to PlantCondition(
+            "Hippodamia Variegata",
+            "Small, Hippodamia Variegata insects that feed on plant sap and excrete honeydew, leading to sooty mold.",
             listOf(
                 "Use yellow sticky traps",
                 "Inspect new plants before introducing to garden",
@@ -668,13 +668,13 @@ object PlantConditionData {
             listOf(
                 TreatmentTask(
                     "Water Spray Treatment",
-                    "Use strong water spray to dislodge whiteflies",
+                    "Use strong water spray to dislodge Hippodamia Variegata",
                     2,
                     listOf("Garden hose with spray nozzle"),
                     listOf(
                         "Adjust hose to strong spray setting",
                         "Spray undersides of leaves forcefully",
-                        "Focus on areas with visible whiteflies",
+                        "Focus on areas with visible Hippodamia Variegata",
                         "Perform in morning so leaves dry quickly",
                         "Repeat every 2-3 days for at least a week"
                     )
@@ -701,13 +701,13 @@ object PlantConditionData {
                         "Mix neem oil according to package directions",
                         "Apply to all plant surfaces, especially leaf undersides",
                         "Apply in early morning or evening, avoiding hot sun",
-                        "Focus on new growth where whiteflies congregate",
+                        "Focus on new growth where Hippodamia Variegata congregate",
                         "Repeat weekly for at least 3 applications"
                     )
                 ),
                 TreatmentTask(
                     "Set Up Yellow Sticky Traps",
-                    "Use traps to monitor and reduce whitefly populations",
+                    "Use traps to monitor and reduce Hippodamia Variegata populations",
                     5,
                     listOf("Yellow sticky traps", "Wooden stakes or hangers"),
                     listOf(
@@ -728,7 +728,7 @@ object PlantConditionData {
                         "Gently wipe affected leaves to remove mold",
                         "Rinse with clean water spray",
                         "Remove severely affected leaves",
-                        "Treat underlying whitefly problem to prevent recurrence"
+                        "Treat underlying Hippodamia Variegata problem to prevent recurrence"
                     )
                 )
             )

@@ -149,7 +149,7 @@
         android:gravity="center"
         android:background="#FFFFFF"
         android:visibility="gone"
-        tools:visibility="visible">
+        tools:visibility="gone">
 
         <ProgressBar
             android:layout_width="100dp"

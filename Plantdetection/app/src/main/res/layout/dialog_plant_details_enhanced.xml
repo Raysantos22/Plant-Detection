@@ -140,6 +140,7 @@
                 android:layout_weight="1"
                 android:background="@drawable/green_button_background"
                 android:text="Water Now"
+                android:visibility="gone"
                 android:textColor="@android:color/white" />
 
             <Button
@@ -149,7 +150,7 @@
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
                 android:background="@drawable/green_button_background"
-                android:text="Scan Plant"
+                android:text="Update Plant Status"
                 android:textColor="@android:color/white" />
         </LinearLayout>
 

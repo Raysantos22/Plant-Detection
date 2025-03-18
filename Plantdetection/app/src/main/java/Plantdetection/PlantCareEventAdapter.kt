@@ -321,10 +321,15 @@ class PlantCareEventAdapter(
             rescanButton?.visibility = View.GONE
 
             // Show reschedule button only for future events
+//            if (rescheduleButton != null) {
+//                rescheduleButton.visibility =
+//                    if (eventDay.after(today) && !event.completed) View.VISIBLE else View.GONE
+//            }
             if (rescheduleButton != null) {
                 rescheduleButton.visibility =
-                    if (eventDay.after(today) && !event.completed) View.VISIBLE else View.GONE
+                    if (eventDay.after(today) && !event.completed) View.GONE else View.GONE
             }
+
 
             // Hide view schedule button as requested
             viewScheduleButton?.visibility = View.GONE
