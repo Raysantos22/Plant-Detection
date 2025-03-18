@@ -59,7 +59,30 @@ class PlantDatabaseManager(private val context: Context) {
         val notes: String = "",
         val completed: Boolean = false
     )
+    fun PlantDatabaseManager.getPlantCareEventsForDate(
+        plantId: String,
+        date: Date
+    ): List<PlantCareEvent> {
+        // Get all events for a specific date
+        val calendar = Calendar.getInstance()
+        calendar.time = date
+        calendar.set(Calendar.HOUR_OF_DAY, 0)
+        calendar.set(Calendar.MINUTE, 0)
+        calendar.set(Calendar.SECOND, 0)
+        calendar.set(Calendar.MILLISECOND, 0)
+        val startOfDay = calendar.time
 
+        calendar.set(Calendar.HOUR_OF_DAY, 23)
+        calendar.set(Calendar.MINUTE, 59)
+        calendar.set(Calendar.SECOND, 59)
+        calendar.set(Calendar.MILLISECOND, 999)
+        val endOfDay = calendar.time
+
+        return getPlantCareEvents(plantId)
+            .filter { event ->
+                event.date >= startOfDay && event.date <= endOfDay
+            }
+    }
     /**
      * Add a new plant to the database
      */

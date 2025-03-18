@@ -1,5 +1,7 @@
 package com.PlantDetection
 
+//import Plantdetection.DailyTaskReminderReceiver
+import Plantdetection.MissedTaskNotificationReceiver
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.BroadcastReceiver
@@ -76,7 +78,15 @@ class PlantManagementActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_plant_management)
+        MissedTaskNotificationReceiver.createMissedTaskNotificationChannel(this)
 
+// Schedule daily missed task check
+        MissedTaskNotificationReceiver.scheduleDailyMissedTaskCheck(this)
+
+        DailyTaskReminderReceiver.createDailyTaskReminderChannel(this)
+
+// Schedule hourly task check
+        DailyTaskReminderReceiver.scheduleHourlyTaskCheck(this)
         // Initialize plant database manager
         plantDatabaseManager = PlantDatabaseManager(this)
         val createCarePlan = intent.getBooleanExtra("CREATE_CARE_PLAN", false)
@@ -177,7 +187,7 @@ class PlantManagementActivity : AppCompatActivity() {
         noEventsMessage = findViewById(R.id.noEventsMessage)
 
         // Set meaningful text for empty plants state
-        noPlantsMessage.text = "You don't have any plants yet. Tap the + button to add a plant."
+        noPlantsMessage.text = ""
     }
 
     private fun setupCalendar() {
