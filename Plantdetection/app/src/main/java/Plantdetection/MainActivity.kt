@@ -10,8 +10,6 @@ import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.graphics.Typeface
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
@@ -237,162 +235,391 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
     // 3. Add method to handle updating a plant with multiple conditions
     private fun updatePlantWithMultipleConditions(plantId: String, detectionsByCondition: Map<String, List<BoundingBox>>) {
-        val plant = plantDatabaseManager.getPlant(plantId)
-        plant?.let {
-            // Get current plant data
-            val wasHealthy = plant.currentCondition?.startsWith("Healthy") ?: true
+        // Stop camera and scanning to prevent resource issues
+        if (isScanning) {
+            toggleScanning()
+        }
+        stopCamera() // Stop camera to free resources
 
-            // Calculate total plants and conditions in new scan
-            val totalPlants = detectionsByCondition.values.sumOf { it.size }
-            val totalConditions = detectionsByCondition.size
+        // Show loading indicator
+        val progressDialog = ProgressDialog(this).apply {
+            setMessage("Updating plants...")
+            setCancelable(false)
+        }
+        progressDialog.show()
 
-            // Check if the name format needs to be updated
-            val isPlantGroup = plant.name.contains("plants") && plant.name.contains("(")
-            val updatedName = if (isPlantGroup) {
-                // Extract the base name without the count info
-                val baseName = plant.name.substringBefore("(").trim()
-                // Update with new counts
-                "$baseName ($totalPlants plants, $totalConditions conditions)"
-            } else {
-                // If it wasn't a group before but is being scanned as multiple plants now,
-                // update the name format
-                if (totalPlants > 1) {
-                    "${plant.name} ($totalPlants plants, $totalConditions conditions)"
-                } else {
-                    plant.name
-                }
-            }
+        // Run the update operation in a background thread to prevent UI freezing
+        Thread {
+            try {
+                val plant = plantDatabaseManager.getPlant(plantId)
+                plant?.let {
+                    // Get current plant data
+                    val wasHealthy = plant.currentCondition?.startsWith("Healthy") ?: true
 
-            // Get the previous conditions from notes (if any)
-            val previousConditions = mutableMapOf<String, Int>()
-            val notesLines = plant.notes.split("\n")
+                    // Calculate total plants and conditions in new scan
+                    val totalPlants = detectionsByCondition.values.sumOf { it.size }
+                    val totalConditions = detectionsByCondition.size
 
-            for (line in notesLines) {
-                if (line.trim().startsWith("-") && line.contains(":") && line.contains("plants")) {
-                    val conditionName = line.substringAfter("-").substringBefore(":").trim()
-                    val countPart = line.substringAfter(":").trim()
-                    val count = countPart.substringBefore(" ").toIntOrNull() ?: 0
-
-                    if (count > 0) {
-                        previousConditions[conditionName] = count
-                    }
-                }
-            }
-
-            // Determine which conditions have been resolved
-            val resolvedConditions = previousConditions.keys.filter { prevCondition ->
-                !detectionsByCondition.keys.any { it == prevCondition } &&
-                        !prevCondition.startsWith("Healthy")
-            }
-
-            // Set primary condition to the highest priority one (disease takes priority over healthy)
-            val primaryCondition = getPrimaryCondition(detectionsByCondition.keys.toList())
-
-            // Check if this is a new primary condition
-            val isNewCondition = plant.currentCondition != primaryCondition
-            val isNowHealthy = primaryCondition.startsWith("Healthy")
-
-            // Save new condition information in plant notes
-            val conditionSummary = "Multiple plant detection (${Date()}):\n" +
-                    detectionsByCondition.entries.joinToString("\n") { entry ->
-                        "- ${entry.key}: ${entry.value.size} plants"
+                    // Check if the name format needs to be updated
+                    val isPlantGroup = plant.name.contains("plants") && plant.name.contains("(")
+                    val updatedName = if (isPlantGroup) {
+                        // Extract the base name without the count info
+                        val baseName = plant.name.substringBefore("(").trim()
+                        // Update with new counts
+                        "$baseName ($totalPlants plants, $totalConditions conditions)"
+                    } else {
+                        // If it wasn't a group before but is being scanned as multiple plants now,
+                        // update the name format
+                        if (totalPlants > 1) {
+                            "${plant.name} ($totalPlants plants, $totalConditions conditions)"
+                        } else {
+                            plant.name
+                        }
                     }
 
-            // Update notes, keeping other information but replacing any previous detection reports
-            val baseNotes = plant.notes.substringBefore("Multiple plant detection").trim()
-            val updatedNotes = if (baseNotes.isEmpty()) conditionSummary else "$baseNotes\n\n$conditionSummary"
+                    // Get the previous conditions from notes (if any)
+                    val previousConditions = mutableMapOf<String, Int>()
+                    val notesLines = plant.notes.split("\n")
 
-            // Update plant with new information
-            val updatedPlant = it.copy(
-                name = updatedName,
-                currentCondition = primaryCondition,
-                lastScannedDate = Date(),
-                notes = updatedNotes
-            )
+                    for (line in notesLines) {
+                        if (line.trim().startsWith("-") && line.contains(":") && line.contains("plants")) {
+                            val conditionName = line.substringAfter("-").substringBefore(":").trim()
+                            val countPart = line.substringAfter(":").trim()
+                            val count = countPart.substringBefore(" ").toIntOrNull() ?: 0
 
-            // Save to database
-            if (plantDatabaseManager.updatePlant(updatedPlant)) {
-                // Create a scan event for the primary condition
-                val eventId = "scan_${plantId}_${System.currentTimeMillis()}"
-                val scanEvent = PlantDatabaseManager.PlantCareEvent(
-                    id = eventId,
-                    plantId = plantId,
-                    eventType = "Scan",
-                    date = Date(),
-                    conditionName = primaryCondition,
-                    notes = "Multiple conditions detected: ${detectionsByCondition.keys.joinToString(", ")}",
-                    completed = true
-                )
+                            if (count > 0) {
+                                previousConditions[conditionName] = count
+                            }
+                        }
+                    }
 
-                // Save event
-                plantDatabaseManager.addPlantCareEvent(scanEvent)
+                    // Determine which conditions have been resolved
+                    val resolvedConditions = previousConditions.keys.filter { prevCondition ->
+                        !detectionsByCondition.keys.any { it == prevCondition } &&
+                                !prevCondition.startsWith("Healthy")
+                    }
 
-                // Send broadcast to refresh plant management activity
-                val intent = Intent("com.PlantDetection.REFRESH_PLANT_STATUS")
-                intent.putExtra("PLANT_ID", plantId)
-                try {
-                    LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
-                } catch (e: Exception) {
-                    Log.e("MainActivity", "Error sending broadcast: ${e.message}")
-                }
+                    // Set primary condition to the highest priority one (disease takes priority over healthy)
+                    val primaryCondition = getPrimaryCondition(detectionsByCondition.keys.toList())
 
-                // Create events for each additional condition
-                for ((condition, detections) in detectionsByCondition) {
-                    if (condition != primaryCondition) {
-                        val additionalEventId = "scan_${plantId}_${condition}_${System.currentTimeMillis()}"
-                        val additionalEvent = PlantDatabaseManager.PlantCareEvent(
-                            id = additionalEventId,
+                    // Check if this is a new primary condition
+                    val isNewCondition = plant.currentCondition != primaryCondition
+                    val isNowHealthy = primaryCondition.startsWith("Healthy")
+
+                    // Save new condition information in plant notes
+                    val conditionSummary = "Multiple plant detection (${Date()}):\n" +
+                            detectionsByCondition.entries.joinToString("\n") { entry ->
+                                "- ${entry.key}: ${entry.value.size} plants"
+                            }
+
+                    // Update notes, keeping other information but replacing any previous detection reports
+                    val baseNotes = plant.notes.substringBefore("Multiple plant detection").trim()
+                    val updatedNotes = if (baseNotes.isEmpty()) conditionSummary else "$baseNotes\n\n$conditionSummary"
+
+                    // Update plant with new information
+                    val updatedPlant = it.copy(
+                        name = updatedName,
+                        currentCondition = primaryCondition,
+                        lastScannedDate = Date(),
+                        notes = updatedNotes
+                    )
+
+                    // Save to database
+                    if (plantDatabaseManager.updatePlant(updatedPlant)) {
+                        // Create a scan event for the primary condition
+                        val eventId = "scan_${plantId}_${System.currentTimeMillis()}"
+                        val scanEvent = PlantDatabaseManager.PlantCareEvent(
+                            id = eventId,
                             plantId = plantId,
                             eventType = "Scan",
                             date = Date(),
-                            conditionName = condition,
-                            notes = "Condition detected: $condition (${detections.size} plants)",
+                            conditionName = primaryCondition,
+                            notes = "Multiple conditions detected: ${detectionsByCondition.keys.joinToString(", ")}",
                             completed = true
                         )
-                        plantDatabaseManager.addPlantCareEvent(additionalEvent)
+
+                        // Save event
+                        plantDatabaseManager.addPlantCareEvent(scanEvent)
+
+                        // Send broadcast to refresh plant management activity
+                        val intent = Intent("com.PlantDetection.REFRESH_PLANT_STATUS")
+                        intent.putExtra("PLANT_ID", plantId)
+                        try {
+                            LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+                        } catch (e: Exception) {
+                            Log.e("MainActivity", "Error sending broadcast: ${e.message}")
+                        }
+
+                        // Create events for each additional condition
+                        for ((condition, detections) in detectionsByCondition) {
+                            if (condition != primaryCondition) {
+                                val additionalEventId = "scan_${plantId}_${condition}_${System.currentTimeMillis()}"
+                                val additionalEvent = PlantDatabaseManager.PlantCareEvent(
+                                    id = additionalEventId,
+                                    plantId = plantId,
+                                    eventType = "Scan",
+                                    date = Date(),
+                                    conditionName = condition,
+                                    notes = "Condition detected: $condition (${detections.size} plants)",
+                                    completed = true
+                                )
+                                plantDatabaseManager.addPlantCareEvent(additionalEvent)
+                            }
+                        }
+
+                        // IMPORTANT: Cancel all existing care events (except completed ones)
+                        // to recreate the care plan based on new conditions
+                        cancelFutureCareEvents(plantId)
+
+                        // Always recreate the complete plant care plan based on new conditions
+                        createCompletePlantCarePlan(plantId, updatedPlant.type, updatedPlant.wateringFrequency)
+
+                        // Update UI on the main thread
+                        runOnUiThread {
+                            progressDialog.dismiss()
+
+                            // If plant was healthy and now has a disease
+                            if (wasHealthy && !isNowHealthy) {
+                                // Show plant info dialog with all conditions
+                                showMultiplePlantsInfoDialog(detectionsByCondition, true, true)
+                                Toast.makeText(this, "Treatment plans created for detected conditions", Toast.LENGTH_SHORT).show()
+                            }
+                            // If changing from diseased to healthy, show congratulations
+                            else if (!wasHealthy && isNowHealthy) {
+                                // Show recovery dialog
+                                AlertDialog.Builder(this)
+                                    .setTitle("Plants Recovered!")
+                                    .setMessage("Great news! Your ${updatedPlant.name} have recovered and are now healthy. All treatments have been updated.")
+                                    .setPositiveButton("View Plant") { _, _ ->
+                                        val intent = Intent(this, PlantManagementActivity::class.java)
+                                        intent.putExtra("OPEN_PLANT_ID", plantId)
+                                        startActivity(intent)
+                                        finish() // Close this activity
+                                    }
+                                    .setNegativeButton("OK", null)
+                                    .show()
+                            }
+                            // If condition changed but still diseased, update treatment
+                            else if (isNewCondition && !isNowHealthy) {
+                                // Show plant info dialog with all conditions
+                                showMultiplePlantsInfoDialog(detectionsByCondition, true, true)
+                                Toast.makeText(this, "Treatment plans updated based on new scan", Toast.LENGTH_SHORT).show()
+                            }
+                            // Just a normal rescan with no change
+                            else {
+                                // Show plant info dialog with all conditions
+                                showMultiplePlantsInfoDialog(detectionsByCondition, true, true)
+                                Toast.makeText(this, "Plant conditions updated", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    } else {
+                        runOnUiThread {
+                            progressDialog.dismiss()
+                            Toast.makeText(this, "Failed to update plant", Toast.LENGTH_SHORT).show()
+                            // Restart camera on error
+                            startCamera()
+                        }
+                    }
+                } ?: run {
+                    runOnUiThread {
+                        progressDialog.dismiss()
+                        Toast.makeText(this, "Plant not found", Toast.LENGTH_SHORT).show()
+                        // Restart camera on error
+                        startCamera()
                     }
                 }
+            } catch (e: Exception) {
+                runOnUiThread {
+                    progressDialog.dismiss()
+                    Log.e("UpdatePlants", "Error updating plants", e)
+                    Toast.makeText(
+                        this,
+                        "Error updating plants: ${e.localizedMessage}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    // Restart camera on error
+                    startCamera()
+                }
+            }
+        }.start()
+    }
+    private fun showMultiplePlantsInfoDialog(
+        detectionsByCondition: Map<String, List<BoundingBox>>,
+        showMonitoringOptions: Boolean = false,
+        isRescan: Boolean = false
+    ) {
+        // Get primary condition for the main display
+        val conditions = detectionsByCondition.keys.toList()
+        val primaryCondition = getPrimaryCondition(conditions)
+        val condition = PlantConditionData.conditions[primaryCondition] ?: return
 
-                // IMPORTANT: Cancel all existing care events (except completed ones)
-                // to recreate the care plan based on new conditions
-                cancelFutureCareEvents(plantId)
+        // Create dialog with custom layout
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_plant_info, null)
 
-                // Always recreate the complete plant care plan based on new conditions
-                createCompletePlantCarePlan(plantId, updatedPlant.type, updatedPlant.wateringFrequency)
+        // Set primary condition details
+        val conditionTitle = dialogView.findViewById<TextView>(R.id.conditionTitle)
+        val conditionDescription = dialogView.findViewById<TextView>(R.id.conditionDescription)
+        val preventionTipsContainer =
+            dialogView.findViewById<LinearLayout>(R.id.preventionTipsContainer)
+        val treatmentTipsContainer =
+            dialogView.findViewById<LinearLayout>(R.id.treatmentTipsContainer)
+        val closeButton = dialogView.findViewById<View>(R.id.closeButton)
+        val monitoringSection = dialogView.findViewById<View>(R.id.monitoringSection)
+        val setReminderButton =
+            dialogView.findViewById<android.widget.Button>(R.id.setReminderButton)
+        val taskCompleteButton =
+            dialogView.findViewById<android.widget.Button>(R.id.taskCompleteButton)
+        val addToCalendarButton =
+            dialogView.findViewById<android.widget.Button>(R.id.addToCalendarButton)
+        val goToManagementButton =
+            dialogView.findViewById<android.widget.Button>(R.id.goToManagementButton)
 
-                // If plant was healthy and now has a disease
-                if (wasHealthy && !isNowHealthy) {
-                    // Show plant info dialog with all conditions
-                    showMultiplePlantInfoDialog(detectionsByCondition, true, true)
-                    Toast.makeText(this, "Treatment plans created for detected conditions", Toast.LENGTH_SHORT).show()
+        // Custom title to show multiple plants and conditions were detected
+        val totalPlants = detectionsByCondition.values.sumOf { it.size }
+        val totalConditions = detectionsByCondition.size
+        conditionTitle.text = "$totalPlants plants detected: $totalConditions conditions"
+
+        // Create a more detailed description showing plant counts
+        val conditionCounts =
+            detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
+                "• $condition: ${detections.size} plants"
+            }
+        conditionDescription.text = "Plant conditions detected:\n$conditionCounts"
+
+        // Create a custom card for showing all detected plant conditions
+        val addDetailsText = TextView(this)
+        addDetailsText.text = "Multiple plants detected in this scan:"
+        addDetailsText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
+        addDetailsText.textSize = 16f
+        addDetailsText.setTypeface(null, Typeface.BOLD)
+        addDetailsText.setPadding(0, 24, 0, 8)
+        preventionTipsContainer.addView(addDetailsText)
+
+        // Add a summary of each detected condition with plant counts
+        for ((condName, detections) in detectionsByCondition) {
+            val countText = TextView(this)
+            countText.text = "• $condName: ${detections.size} plants"
+            countText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
+            countText.textSize = 14f
+            countText.setPadding(16, 4, 0, 4)
+            preventionTipsContainer.addView(countText)
+        }
+
+        // Add treatment tips section - first add a header
+        treatmentTipsContainer.removeAllViews()
+
+        // For each condition, add its information
+        for ((condName, detections) in detectionsByCondition) {
+            val conditionData = PlantConditionData.conditions[condName]
+            if (conditionData != null) {
+                // Add condition header
+                val headerText = TextView(this)
+                headerText.text = "$condName (${detections.size} plants)"
+                headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
+                headerText.textSize = 16f
+                headerText.setTypeface(null, Typeface.BOLD)
+                headerText.setPadding(0, 24, 0, 8)
+                treatmentTipsContainer.addView(headerText)
+
+                // Add treatment tips for this condition
+                conditionData.treatmentTips.take(2)
+                    .forEach { tip -> // Limit to 2 tips to save space
+                        val tipView = LayoutInflater.from(this)
+                            .inflate(R.layout.item_treatment_tip, treatmentTipsContainer, false)
+                        tipView.findViewById<TextView>(R.id.tipText).text = tip
+                        treatmentTipsContainer.addView(tipView)
+                    }
+            }
+        }
+
+        // Configure the monitoring section based on scan type
+        if (isRescan && selectedPlantId != null) {
+            // This is a rescan of an existing plant - show Go to Management button
+            monitoringSection.visibility = View.VISIBLE
+
+            // Hide the regular buttons
+            setReminderButton.visibility = View.GONE
+            taskCompleteButton.visibility = View.GONE
+            addToCalendarButton.visibility = View.GONE
+
+            // Show the go to management button
+            goToManagementButton.visibility = View.VISIBLE
+
+            // Set go to management button listener
+            goToManagementButton.setOnClickListener {
+                val intent = Intent(this, PlantManagementActivity::class.java)
+                intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
+                startActivity(intent)
+                finish() // Close this activity
+            }
+        } else if (showMonitoringOptions && selectedPlantId != null) {
+            // Regular scan for an existing plant
+            monitoringSection.visibility = View.VISIBLE
+            goToManagementButton.visibility = View.GONE
+            setReminderButton.visibility = View.VISIBLE
+            taskCompleteButton.visibility = View.VISIBLE
+            addToCalendarButton.visibility = View.GONE
+
+            // Set reminder button
+            setReminderButton.setOnClickListener {
+                dialogShowDateTimePicker(primaryCondition)
+            }
+
+            // Task complete button
+            taskCompleteButton.setOnClickListener {
+                markTreatmentComplete(primaryCondition)
+                Toast.makeText(this, "Task marked as complete", Toast.LENGTH_SHORT).show()
+                infoDialog?.dismiss()
+
+                // If this was a disease/pest condition, ask if it's resolved
+                if (!primaryCondition.startsWith("Healthy")) {
+                    showResolutionConfirmationDialog()
                 }
-                // If changing from diseased to healthy, show congratulations
-                else if (!wasHealthy && isNowHealthy) {
-                    // Show recovery dialog
-                    AlertDialog.Builder(this)
-                        .setTitle("Plants Recovered!")
-                        .setMessage("Great news! Your ${updatedPlant.name} have recovered and are now healthy. All treatments have been updated.")
-                        .setPositiveButton("View Plant") { _, _ ->
-                            val intent = Intent(this, PlantManagementActivity::class.java)
-                            intent.putExtra("OPEN_PLANT_ID", plantId)
-                            startActivity(intent)
-                            finish() // Close this activity
-                        }
-                        .setNegativeButton("OK", null)
-                        .show()
+            }
+        } else if (showMonitoringOptions) {
+            // This is a one-time scan, show option to add to my plants
+            monitoringSection.visibility = View.VISIBLE
+            setReminderButton.visibility = View.GONE
+            taskCompleteButton.visibility = View.GONE
+            goToManagementButton.visibility = View.GONE
+            addToCalendarButton.visibility = View.VISIBLE
+
+            // Add to calendar button - now shows dialog for multiple plants
+            addToCalendarButton.setOnClickListener {
+                showAddMultiplePlantsDialog(detectionsByCondition)
+            }
+        } else {
+            monitoringSection.visibility = View.GONE
+        }
+
+        // Set up close button
+        closeButton.setOnClickListener {
+            infoDialog?.dismiss()
+
+            // If we came from the Plant Management screen and this was a rescan, go back there
+            if (selectedPlantId != null && isRescan) {
+                val intent = Intent(this, PlantManagementActivity::class.java)
+                intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
+                startActivity(intent)
+                finish()
+            } else {
+                // Only restart camera if we're not finishing the activity
+                if (!isFinishing) {
+                    startCamera()
                 }
-                // If condition changed but still diseased, update treatment
-                else if (isNewCondition && !isNowHealthy) {
-                    // Show plant info dialog with all conditions
-                    showMultiplePlantInfoDialog(detectionsByCondition, true, true)
-                    Toast.makeText(this, "Treatment plans updated based on new scan", Toast.LENGTH_SHORT).show()
-                }
-                // Just a normal rescan with no change
-                else {
-                    // Show plant info dialog with all conditions
-                    showMultiplePlantInfoDialog(detectionsByCondition, true, true)
-                    Toast.makeText(this, "Plant conditions updated", Toast.LENGTH_SHORT).show()
-                }
+            }
+        }
+
+        // Create and show the dialog
+        infoDialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        // Handle dialog dismissal to restart camera if needed
+        infoDialog?.setOnDismissListener {
+            if (!isFinishing) {
+                startCamera()
             }
         }
     }
@@ -572,7 +799,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
             // Add to calendar button - now shows dialog for multiple plants
             addToCalendarButton.setOnClickListener {
-                stopCameraOperations() // Ensure camera is stopped
                 showAddMultiplePlantsDialog(detectionsByCondition)
             }
         } else {
@@ -602,272 +828,183 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     }
 
     // 6. Add dialog for creating a new plant group from multiple detections
-    // 1. COMPLETE IMPLEMENTATION FOR showAddMultiplePlantsDialog METHOD
     private fun showAddMultiplePlantsDialog(detectionsByCondition: Map<String, List<BoundingBox>>) {
-        try {
-            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_to_calendar, null)
+        // Stop camera and scanning to prevent resource issues
+        if (isScanning) {
+            toggleScanning()
+        }
+        stopCamera() // Stop camera to free resources
 
-            // Initialize views with null checks
-            val detectionResultText = dialogView.findViewById<TextView>(R.id.detectionResultText)
-            val plantNameInput = dialogView.findViewById<EditText>(R.id.plantNameInput)
-            val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
-            val addPlantButton = dialogView.findViewById<Button>(R.id.addPlantButton)
+        // Show loading indicator
+        val loadingDialog = ProgressDialog(this).apply {
+            setMessage("Preparing...")
+            setCancelable(false)
+        }
+        loadingDialog.show()
 
-            if (detectionResultText == null || plantNameInput == null ||
-                cancelButton == null || addPlantButton == null) {
-                Log.e("MainActivity", "Missing views in dialog layout")
-                Toast.makeText(this, "Error creating dialog", Toast.LENGTH_SHORT).show()
-                return
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_to_calendar, null)
+
+        // Initialize views
+        val detectionResultText = dialogView.findViewById<TextView>(R.id.detectionResultText)
+        val plantNameInput = dialogView.findViewById<android.widget.EditText>(R.id.plantNameInput)
+        val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
+        val addPlantButton = dialogView.findViewById<Button>(R.id.addPlantButton)
+
+        // Get total plants and conditions summary
+        val totalPlants = detectionsByCondition.values.sumOf { it.size }
+        val totalConditions = detectionsByCondition.size
+
+        // Set initial values
+        detectionResultText.text = "Detected: $totalPlants plants with $totalConditions conditions"
+
+        // Fixed default watering frequency
+        val wateringFrequency = 1 // Default to 1 day
+
+        // Hide watering frequency controls
+        val wateringFrequencyText = dialogView.findViewById<TextView>(R.id.wateringFrequencyText)
+        val decreaseFrequencyButton = dialogView.findViewById<Button>(R.id.decreaseFrequencyButton)
+        val increaseFrequencyButton = dialogView.findViewById<Button>(R.id.increaseFrequencyButton)
+
+        wateringFrequencyText.visibility = View.GONE
+        decreaseFrequencyButton.visibility = View.GONE
+        increaseFrequencyButton.visibility = View.GONE
+
+        // Determine vegetable type from conditions
+        val vegetableType = when {
+            detectionsByCondition.keys.any { it.contains("Tomato", ignoreCase = true) } -> "Tomato"
+            detectionsByCondition.keys.any { it.contains("Eggplant", ignoreCase = true) } -> "Eggplant"
+            else -> selectedVegetable ?: "Tomato"
+        }
+
+        // Suggest a default name without the counts
+        val suggestedName = "$vegetableType Group"
+        plantNameInput.setText("")
+
+        // Dismiss loading dialog now that we've set up the dialog
+        loadingDialog.dismiss()
+
+        // Add a notice that counts will be appended automatically
+        val noticeText = dialogView.findViewById<TextView>(R.id.noticeText) ?: TextView(this).apply {
+            id = R.id.noticeText
+            textSize = 12f
+            setTextColor(ContextCompat.getColor(context, R.color.dark_gray))
+            text = "Plant count information will be added automatically to the name."
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(16, 8, 16, 16)
             }
+            // Add to parent if it doesn't exist
+            val parent = plantNameInput.parent as? ViewGroup
+            parent?.addView(this, parent.indexOfChild(plantNameInput) + 1)
+        }
 
-            // Get total plants and conditions
-            val totalPlants = detectionsByCondition.values.sumOf { it.size }
-            val totalConditions = detectionsByCondition.size
-            detectionResultText.text = "Detected: $totalPlants plants with $totalConditions conditions"
-
-            // Hide watering controls
-            val wateringFrequencyText = dialogView.findViewById<TextView>(R.id.wateringFrequencyText)
-            val decreaseFrequencyButton = dialogView.findViewById<Button>(R.id.decreaseFrequencyButton)
-            val increaseFrequencyButton = dialogView.findViewById<Button>(R.id.increaseFrequencyButton)
-            wateringFrequencyText?.visibility = View.GONE
-            decreaseFrequencyButton?.visibility = View.GONE
-            increaseFrequencyButton?.visibility = View.GONE
-
-            // Default watering frequency
-            val wateringFrequency = 1
-
-            // Determine vegetable type
-            val vegetableType = when {
-                detectionsByCondition.keys.any { it.contains("Tomato", ignoreCase = true) } -> "Tomato"
-                detectionsByCondition.keys.any { it.contains("Eggplant", ignoreCase = true) } -> "Eggplant"
-                else -> selectedVegetable ?: "Tomato"
-            }
-
-            // Default plant name
-            val suggestedName = "$vegetableType Group"
-            plantNameInput.setText(suggestedName)
-
-            // Add notice text
-            try {
-                val parent = plantNameInput.parent as? ViewGroup
-                if (parent != null) {
-                    val noticeText = TextView(this).apply {
-                        textSize = 12f
-                        setTextColor(ContextCompat.getColor(context, R.color.dark_gray))
-                        text = "Plant count information will be added automatically."
-                        layoutParams = LinearLayout.LayoutParams(
-                            LinearLayout.LayoutParams.MATCH_PARENT,
-                            LinearLayout.LayoutParams.WRAP_CONTENT
-                        ).apply {
-                            setMargins(16, 8, 16, 16)
-                        }
-                    }
-                    parent.addView(noticeText, parent.indexOfChild(plantNameInput) + 1)
-                }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Error adding notice text: ${e.message}")
-                // Non-critical error, continue without the notice
-            }
-
-            // Cancel button
-            cancelButton.setOnClickListener {
-                // Just dismiss the dialog
-                infoDialog?.dismiss()
-            }
-
-            // Add plant button
-            addPlantButton.setOnClickListener {
-                addPlantButton.isEnabled = false
-
-                val basePlantName = plantNameInput.text.toString().trim()
-                if (basePlantName.isEmpty()) {
-                    Toast.makeText(this, "Please enter a plant name", Toast.LENGTH_SHORT).show()
-                    addPlantButton.isEnabled = true
-                    return@setOnClickListener
-                }
-
-                val progressDialog = ProgressDialog(this).apply {
-                    setMessage("Adding plant group...")
-                    setCancelable(false)
-                    show()
-                }
-
-                Thread {
-                    try {
-                        val totalPlants = detectionsByCondition.values.sumOf { it.size }
-                        val totalConditions = detectionsByCondition.size
-
-                        val finalPlantName = "$basePlantName (${totalPlants} plants, ${totalConditions} conditions)"
-
-                        val vegetableType = when {
-                            detectionsByCondition.keys.any { it.contains("Tomato", ignoreCase = true) } -> "Tomato"
-                            detectionsByCondition.keys.any { it.contains("Eggplant", ignoreCase = true) } -> "Eggplant"
-                            else -> selectedVegetable ?: "Tomato"
-                        }
-
-                        val plantId = addMultiplePlantsAsGroup(
-                            plantName = finalPlantName,
-                            vegetableType = vegetableType,
-                            detectionsByCondition = detectionsByCondition,
-                            wateringFrequency = 2
-                        )
-
-                        runOnUiThread {
-                            progressDialog.dismiss()
-
-                            if (plantId.isNotEmpty()) {
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Plant group added successfully!",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-
-                                // Create care plan in background
-                                Thread {
-                                    try {
-                                        createCompletePlantCarePlan(plantId, vegetableType, 2)
-
-                                        runOnUiThread {
-                                            infoDialog?.dismiss()
-                                            navigateToPlantManagement(plantId, true)
-                                        }
-                                    } catch (e: Exception) {
-                                        Log.e("MainActivity", "Care plan error: ${e.message}", e)
-                                        runOnUiThread {
-                                            Toast.makeText(
-                                                this@MainActivity,
-                                                "Error creating care plan",
-                                                Toast.LENGTH_SHORT
-                                            ).show()
-                                        }
-                                    }
-                                }.start()
-                            } else {
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Failed to add plant group",
-                                    Toast.LENGTH_SHORT
-                                ).show()
-                                addPlantButton.isEnabled = true
-                            }
-                        }
-                    } catch (e: Exception) {
-                        runOnUiThread {
-                            progressDialog.dismiss()
-                            Log.e("MainActivity", "Plant group add error: ${e.message}", e)
-                            Toast.makeText(
-                                this@MainActivity,
-                                "Error: ${e.message}",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            addPlantButton.isEnabled = true
-                        }
-                    }
-                }.start()
-            }
-
-            // Create and show dialog
-            val dialog = AlertDialog.Builder(this)
-                .setView(dialogView)
-                .setCancelable(true)
-                .create()
-
-            // Set dialog dismissal listener
-            dialog.setOnDismissListener {
-                // Clean up
-                infoDialog = null
-            }
-
-            // Replace existing dialog
+        cancelButton.setOnClickListener {
+            // Just dismiss the dialog
             infoDialog?.dismiss()
-            infoDialog = dialog
-            dialog.show()
-
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error in showAddMultiplePlantsDialog: ${e.message}", e)
-            Toast.makeText(this, "Error showing dialog: ${e.message}", Toast.LENGTH_SHORT).show()
+            // Restart camera when canceling
+            startCamera()
         }
-    }
-    private fun stopCameraOperations() {
-        try {
-            // Stop scanning
-            if (isScanning) {
-                toggleScanning()
+
+        addPlantButton.setOnClickListener {
+            val basePlantName = plantNameInput.text.toString().trim()
+
+            if (basePlantName.isEmpty()) {
+                Toast.makeText(this, "Please enter a plant name", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
 
-            // Unbind all use cases
-            cameraProvider?.unbindAll()
-
-            // Shutdown camera executor
-            cameraExecutor.shutdownNow()
-
-            // Clear any ongoing detection
-            currentDetections.clear()
-            currentDetection = null
-
-            // Reset UI elements
-            binding.apply {
-                overlay.clear()
-                detectionText.visibility = View.INVISIBLE
-                captureButton.isEnabled = false
+            // Always append the plant count information if it's not already included
+            val finalPlantName = if (!basePlantName.contains("(") || !basePlantName.contains("plants")) {
+                "$basePlantName (${totalPlants} plants, ${totalConditions} conditions)"
+            } else {
+                basePlantName
             }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error stopping camera operations: ${e.message}", e)
-        }
-    }
-    private fun navigateToPlantManagement(plantId: String, createCarePlan: Boolean = false) {
-        try {
-            // Show a loading dialog
-            val loadingDialog = ProgressDialog(this).apply {
-                setMessage("Loading plant details...")
+
+            // Disable button to prevent multiple clicks
+            addPlantButton.isEnabled = false
+
+            // Show progress dialog
+            val progressDialog = ProgressDialog(this).apply {
+                setMessage("Adding plants group...")
                 setCancelable(false)
-                show()
             }
+            progressDialog.show()
 
-            // Verify plant exists before navigating
-            val plant = plantDatabaseManager.getPlant(plantId)
-            if (plant == null) {
-                Log.e("MainActivity", "Attempted to navigate to non-existent plant: $plantId")
-                loadingDialog.dismiss()
-                Toast.makeText(this, "Plant not found", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            // Use Handler to create a deliberate delay
-            Handler(Looper.getMainLooper()).postDelayed({
+            // Add the multiple plants as a group (run on background thread to prevent ANR)
+            Thread {
                 try {
-                    // Prepare intent with clear top flag to prevent multiple instances
-                    val intent = Intent(this, PlantManagementActivity::class.java).apply {
-                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-                        putExtra("OPEN_PLANT_ID", plantId)
+                    val plantId = addMultiplePlantsAsGroup(
+                        plantName = finalPlantName,
+                        vegetableType = vegetableType,
+                        detectionsByCondition = detectionsByCondition,
+                        wateringFrequency = wateringFrequency
+                    )
 
-                        // Optional care plan creation flag
-                        if (createCarePlan) {
-                            putExtra("CREATE_CARE_PLAN", true)
-                            putExtra("PLANT_TYPE", plant.type)
-                            putExtra("WATERING_FREQUENCY", plant.wateringFrequency)
+                    runOnUiThread {
+                        progressDialog.dismiss()
+
+                        if (plantId.isNotEmpty()) {
+                            // Create comprehensive care plan for all plants in the group
+                            createCompletePlantCarePlan(plantId, vegetableType, wateringFrequency)
+
+                            Toast.makeText(this, "Plant group added to monitoring with complete care schedule", Toast.LENGTH_SHORT).show()
+
+                            // Dismiss dialogs
+                            infoDialog?.dismiss()
+
+                            // Go to plant management screen
+                            val intent = Intent(this, PlantManagementActivity::class.java)
+                            startActivity(intent)
+                            finish()
+                        } else {
+                            Toast.makeText(this, "Failed to add plant group", Toast.LENGTH_SHORT).show()
+                            addPlantButton.isEnabled = true
+                            // Restart camera if we're not navigating away
+                            startCamera()
                         }
                     }
-
-                    // Dismiss loading dialog
-                    loadingDialog.dismiss()
-
-                    // Start activity and finish current one
-                    startActivity(intent)
-                    finish()
                 } catch (e: Exception) {
-                    loadingDialog.dismiss()
-                    Log.e("MainActivity", "Navigation error: ${e.message}", e)
-                    Toast.makeText(this, "Error opening plant management", Toast.LENGTH_SHORT).show()
+                    runOnUiThread {
+                        progressDialog.dismiss()
+                        Log.e("AddPlantGroup", "Error adding plant group", e)
+                        Toast.makeText(
+                            this,
+                            "Error adding plant group: ${e.localizedMessage}",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        addPlantButton.isEnabled = true
+                        // Restart camera on error
+                        startCamera()
+                    }
                 }
-            }, 5000) // 5 seconds (5000 milliseconds) delay
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Navigation preparation error: ${e.message}", e)
-            Toast.makeText(this, "Error preparing plant management", Toast.LENGTH_SHORT).show()
+            }.start()
         }
+
+        // Create and show the dialog
+        val dialog = AlertDialog.Builder(this)
+            .setView(dialogView)
+            .setCancelable(true)
+            .create()
+
+        // Handle dialog dismissal to restart camera if needed
+        dialog.setOnDismissListener {
+            if (infoDialog == dialog) {
+                infoDialog = null
+                // Only restart camera if we're not already navigating away
+                if (!isFinishing) {
+                    startCamera()
+                }
+            }
+        }
+
+        dialog.show()
+
+        // Replace current info dialog with this new one
+        infoDialog?.dismiss()
+        infoDialog = dialog
     }
-
-
     // 7. Create a method to add multiple plants as a group
     private fun addMultiplePlantsAsGroup(
         plantName: String,
@@ -875,68 +1012,64 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         detectionsByCondition: Map<String, List<BoundingBox>>,
         wateringFrequency: Int
     ): String {
-        try {
-            // Get primary condition for the plant record
-            val conditions = detectionsByCondition.keys.toList()
-            val primaryCondition = getPrimaryCondition(conditions)
+        // Get primary condition for the plant record
+        val conditions = detectionsByCondition.keys.toList()
+        val primaryCondition = getPrimaryCondition(conditions)
 
-            // Create a plant ID
-            val plantId = "plant_${System.currentTimeMillis()}"
+        // Create a plant ID
+        val plantId = "plant_${System.currentTimeMillis()}"
 
-            // Ensure plant name contains the count info
-            val totalPlants = detectionsByCondition.values.sumOf { it.size }
-            val totalConditions = detectionsByCondition.size
+        // Ensure plant name contains the count info
+        val totalPlants = detectionsByCondition.values.sumOf { it.size }
+        val totalConditions = detectionsByCondition.size
 
-            // Extract plant counts from name or use the detected counts
-            val finalPlantName = if (!plantName.contains("(") || !plantName.contains("plants")) {
-                "$plantName (${totalPlants} plants, ${totalConditions} conditions)"
-            } else {
-                plantName
+        // Extract plant counts from name or use the detected counts
+        val finalPlantName = if (!plantName.contains("(") || !plantName.contains("plants")) {
+            "$plantName (${totalPlants} plants, ${totalConditions} conditions)"
+        } else {
+            plantName
+        }
+
+        // Create plant notes with detailed detection information
+        val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
+            "- $condition: ${detections.size} plants"
+        }
+
+        // Include details of all detected conditions in notes
+        val notes = "Plant group containing $totalPlants plants with ${detectionsByCondition.size} different conditions:\n$conditionCounts\n\nDetected on: ${Date()}"
+
+        // Create the plant record
+        val plant = PlantDatabaseManager.Plant(
+            id = plantId,
+            name = finalPlantName,
+            type = vegetableType,
+            createdDate = Date(),
+            lastScannedDate = Date(),
+            currentCondition = primaryCondition,
+            wateringFrequency = wateringFrequency,
+            notes = notes
+        )
+
+        // Add plant to database
+        if (plantDatabaseManager.addPlant(plant)) {
+            // Create scan events for each condition
+            for ((condition, detections) in detectionsByCondition) {
+                val scanEventId = "scan_${plantId}_${condition}_${System.currentTimeMillis()}"
+                val scanEvent = PlantDatabaseManager.PlantCareEvent(
+                    id = scanEventId,
+                    plantId = plantId,
+                    eventType = "Scan",
+                    date = Date(),
+                    conditionName = condition,
+                    notes = "Initial scan detected $condition in ${detections.size} plants",
+                    completed = true
+                )
+
+                plantDatabaseManager.addPlantCareEvent(scanEvent)
             }
 
-            // Create plant notes with detailed detection information
-            val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
-                "- $condition: ${detections.size} plants"
-            }
-
-            // Include details of all detected conditions in notes
-            val notes = "Plant group containing $totalPlants plants with ${detectionsByCondition.size} different conditions:\n$conditionCounts\n\nDetected on: ${Date()}"
-
-            // Create the plant record
-            val plant = PlantDatabaseManager.Plant(
-                id = plantId,
-                name = finalPlantName,
-                type = vegetableType,
-                createdDate = Date(),
-                lastScannedDate = Date(),
-                currentCondition = primaryCondition,
-                wateringFrequency = wateringFrequency,
-                notes = notes
-            )
-
-            // Add plant to database
-            if (plantDatabaseManager.addPlant(plant)) {
-                // Create scan events for each condition
-                for ((condition, detections) in detectionsByCondition) {
-                    val scanEventId = "scan_${plantId}_${condition}_${System.currentTimeMillis()}"
-                    val scanEvent = PlantDatabaseManager.PlantCareEvent(
-                        id = scanEventId,
-                        plantId = plantId,
-                        eventType = "Scan",
-                        date = Date(),
-                        conditionName = condition,
-                        notes = "Initial scan detected $condition in ${detections.size} plants",
-                        completed = true
-                    )
-
-                    plantDatabaseManager.addPlantCareEvent(scanEvent)
-                }
-
-                // Return the plant ID
-                return plantId
-            }
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Error in addMultiplePlantsAsGroup: ${e.message}", e)
+            // Return the plant ID
+            return plantId
         }
 
         return ""
@@ -1589,71 +1722,113 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     }
     private fun showAddToCalendarDialog(conditionName: String) {
         try {
-            // Stop camera operations before showing dialog
-            stopCameraOperations()
+            // Stop camera and scanning to prevent resource issues
+            if (isScanning) {
+                toggleScanning()
+            }
+            stopCamera() // Stop camera to free resources
 
-            val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_to_calendar, null)
+            // Show loading indicator while preparing dialog
+            val loadingDialog = ProgressDialog(this).apply {
+                setMessage("Preparing...")
+                setCancelable(false)
+            }
+            loadingDialog.show()
 
-            val detectionResultText = dialogView.findViewById<TextView>(R.id.detectionResultText)
-            val plantNameInput = dialogView.findViewById<EditText>(R.id.plantNameInput)
-            val cancelButton = dialogView.findViewById<Button>(R.id.cancelButton)
-            val addPlantButton = dialogView.findViewById<Button>(R.id.addPlantButton)
-
-            // Null checks with early return
-            if (detectionResultText == null || plantNameInput == null ||
-                cancelButton == null || addPlantButton == null) {
-                Log.e("MainActivity", "Missing views in dialog layout")
-                Toast.makeText(this, "Error creating dialog", Toast.LENGTH_SHORT).show()
+            // Validate inputs
+            if (conditionName.isBlank()) {
+                Toast.makeText(this, "Invalid condition", Toast.LENGTH_SHORT).show()
+                loadingDialog.dismiss()
                 return
+            }
+
+            // Safely inflate dialog view
+            val dialogView = try {
+                LayoutInflater.from(this).inflate(R.layout.dialog_add_to_calendar, null)
+            } catch (e: Exception) {
+                Log.e("AddPlantDialog", "Failed to inflate dialog layout", e)
+                Toast.makeText(this, "Error creating dialog", Toast.LENGTH_SHORT).show()
+                loadingDialog.dismiss()
+                return
+            }
+
+            // Find views with null checks
+            val detectionResultText = dialogView.findViewById<TextView?>(R.id.detectionResultText)
+            val plantNameInput = dialogView.findViewById<EditText?>(R.id.plantNameInput)
+            val cancelButton = dialogView.findViewById<Button?>(R.id.cancelButton)
+            val addPlantButton = dialogView.findViewById<Button?>(R.id.addPlantButton)
+
+            // Verify all critical views are present
+            val viewChecks = listOf(
+                "Detection Result" to detectionResultText,
+                "Plant Name Input" to plantNameInput,
+                "Cancel Button" to cancelButton,
+                "Add Plant Button" to addPlantButton
+            )
+
+            for ((name, view) in viewChecks) {
+                if (view == null) {
+                    Log.e("AddPlantDialog", "Missing view: $name")
+                    Toast.makeText(this, "Dialog setup error", Toast.LENGTH_SHORT).show()
+                    loadingDialog.dismiss()
+                    return
+                }
             }
 
             // Set detection result text
             detectionResultText.text = "Detected condition: $conditionName"
 
-            // Determine plant type and suggest name
-            val baseType = when {
-                conditionName.contains("Tomato", ignoreCase = true) -> "Tomato"
-                conditionName.contains("Eggplant", ignoreCase = true) -> "Eggplant"
-                else -> selectedVegetable ?: "Plant"
-            }
-
-            // Get existing plant count safely
-            val existingPlantsCount = try {
-                plantDatabaseManager.getAllPlants().size
+            // Suggest default plant name
+            val suggestedName = try {
+                val baseType = when {
+                    conditionName.contains("Tomato", ignoreCase = true) -> "Tomato"
+                    conditionName.contains("Eggplant", ignoreCase = true) -> "Eggplant"
+                    else -> selectedVegetable ?: "Plant"
+                }
+                val existingPlantsCount = try {
+                    plantDatabaseManager.getAllPlants().size
+                } catch (e: Exception) {
+                    Log.e("AddPlantDialog", "Error getting plant count", e)
+                    0
+                }
+                "$baseType Plant ${existingPlantsCount + 1}"
             } catch (e: Exception) {
-                Log.e("MainActivity", "Error getting plant count", e)
-                0
+                Log.e("AddPlantDialog", "Error generating plant name", e)
+                "New Plant"
             }
 
-            // Suggest plant name
-            val suggestedName = "$baseType Plant ${existingPlantsCount + 1}"
             plantNameInput.setText(suggestedName)
+
+            // Dismiss loading dialog now that we've set up the dialog
+            loadingDialog.dismiss()
 
             // Cancel button
             cancelButton.setOnClickListener {
                 infoDialog?.dismiss()
-                finish() // Close the activity since camera is stopped
+                // Restart camera when canceling
+                startCamera()
             }
 
-            // Add plant button with enhanced error handling
+            // Add plant button
             addPlantButton.setOnClickListener {
-                addPlantButton.isEnabled = false
-
                 val plantName = plantNameInput.text.toString().trim()
+
                 if (plantName.isEmpty()) {
                     Toast.makeText(this, "Please enter a plant name", Toast.LENGTH_SHORT).show()
-                    addPlantButton.isEnabled = true
                     return@setOnClickListener
                 }
+
+                // Disable button to prevent multiple clicks
+                addPlantButton.isEnabled = false
 
                 // Show progress dialog
                 val progressDialog = ProgressDialog(this).apply {
                     setMessage("Adding plant...")
                     setCancelable(false)
-                    show()
                 }
+                progressDialog.show()
 
-                // Background thread for database operations
+                // Use a background thread for database operations
                 Thread {
                     try {
                         // Determine plant type
@@ -1670,72 +1845,41 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                             conditionName = conditionName
                         )
 
-                        // Handle UI on main thread
+                        // Run UI updates on main thread
                         runOnUiThread {
-                            try {
-                                progressDialog.dismiss()
+                            progressDialog.dismiss()
 
-                                if (plantId.isNotEmpty()) {
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "Plant added successfully!",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
+                            if (plantId.isNotEmpty()) {
+                                // Create care plan
+                                createCompletePlantCarePlan(plantId, plantType, 2)
 
-                                    // Create care plan and navigate in background
-                                    Thread {
-                                        try {
-                                            createCompletePlantCarePlan(plantId, plantType, 2)
+                                // Dismiss dialogs
+                                infoDialog?.dismiss()
 
-                                            // Navigate to Plant Management on main thread
-                                            runOnUiThread {
-                                                infoDialog?.dismiss()
-                                                navigateToPlantManagement(plantId, true)
-                                            }
-                                        } catch (e: Exception) {
-                                            Log.e("MainActivity", "Care plan error: ${e.message}", e)
-                                            runOnUiThread {
-                                                Toast.makeText(
-                                                    this@MainActivity,
-                                                    "Error creating care plan",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                                finish() // Close activity on error
-                                            }
-                                        }
-                                    }.start()
-                                } else {
-                                    Toast.makeText(
-                                        this@MainActivity,
-                                        "Failed to add plant",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    addPlantButton.isEnabled = true
-                                    finish() // Close activity on failure
-                                }
-                            } catch (e: Exception) {
-                                Log.e("MainActivity", "UI update error: ${e.message}", e)
-                                progressDialog.dismiss()
-                                Toast.makeText(
-                                    this@MainActivity,
-                                    "Error: ${e.message}",
-                                    Toast.LENGTH_SHORT
-                                ).show()
+                                // Navigate to plant management
+                                val intent = Intent(this, PlantManagementActivity::class.java)
+                                startActivity(intent)
+                                finish()
+                            } else {
+                                Toast.makeText(this, "Failed to add plant", Toast.LENGTH_SHORT).show()
                                 addPlantButton.isEnabled = true
-                                finish() // Close activity on error
+                                // Restart camera if we're not navigating away
+                                startCamera()
                             }
                         }
                     } catch (e: Exception) {
+                        // Run on UI thread to show error
                         runOnUiThread {
                             progressDialog.dismiss()
-                            Log.e("MainActivity", "Plant add error: ${e.message}", e)
+                            Log.e("AddPlantDialog", "Error adding plant", e)
                             Toast.makeText(
-                                this@MainActivity,
-                                "Error: ${e.message}",
-                                Toast.LENGTH_SHORT
+                                this,
+                                "Error adding plant: ${e.localizedMessage}",
+                                Toast.LENGTH_LONG
                             ).show()
                             addPlantButton.isEnabled = true
-                            finish() // Close activity on error
+                            // Restart camera on error
+                            startCamera()
                         }
                     }
                 }.start()
@@ -1744,33 +1888,39 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             // Create and show dialog
             val dialog = AlertDialog.Builder(this)
                 .setView(dialogView)
-                .setCancelable(false) // Prevent dismissing
+                .setCancelable(true)
                 .create()
 
+            // Handle dialog dismissal to restart camera if needed
             dialog.setOnDismissListener {
-                infoDialog = null
-                finish() // Close activity if dialog is dismissed
+                if (infoDialog == dialog) {
+                    infoDialog = null
+                    // Only restart camera if we're not already navigating away
+                    if (!isFinishing) {
+                        startCamera()
+                    }
+                }
             }
-            infoDialog?.dismiss()
-            infoDialog = dialog
+
             dialog.show()
+            infoDialog = dialog
 
         } catch (e: Exception) {
-            Log.e("MainActivity", "Dialog creation error: ${e.message}", e)
-            Toast.makeText(this, "Error showing dialog", Toast.LENGTH_SHORT).show()
-            finish() // Close activity on error
+            Log.e("AddPlantDialog", "Unexpected error in dialog creation", e)
+            Toast.makeText(this, "Failed to create dialog", Toast.LENGTH_LONG).show()
+            // Make sure to restart camera on error
+            startCamera()
         }
     }
-    private fun navigateToPlantManagement(plantId: String) {
+
+    // 2. Add function to stop the camera safely
+    private fun stopCamera() {
         try {
-            val intent = Intent(this, PlantManagementActivity::class.java)
-            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
-            intent.putExtra("OPEN_PLANT_ID", plantId)
-            startActivity(intent)
-            finish() // Close current activity
+            imageAnalyzer?.clearAnalyzer()
+            cameraProvider?.unbindAll()
+            Log.d(TAG, "Camera stopped")
         } catch (e: Exception) {
-            Log.e("MainActivity", "Navigation error: ${e.message}", e)
-            Toast.makeText(this, "Error opening plant management", Toast.LENGTH_SHORT).show()
+            Log.e(TAG, "Error stopping camera: ${e.message}")
         }
     }
     private fun dialogShowDateTimePicker(conditionName: String) {
