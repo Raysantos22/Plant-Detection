@@ -6,12 +6,7 @@
     android:viewportHeight="100">
 
     <!-- Leaf -->
-    <path
-        android:fillColor="#8BC34A"
-        android:pathData="M50,30C40,10 70,5 80,20C90,35 80,60 60,50C40,40 50,30 50,30Z" />
-    <path
-        android:fillColor="#689F38"
-        android:pathData="M55,35C50,25 65,20 75,30C80,40 75,50 65,45C55,40 55,35 55,35Z" />
+
 
     <!-- Tomato -->
     <path
