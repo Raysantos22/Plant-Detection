@@ -1031,7 +1031,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_plant_info, null)
 
         // Set primary condition details
-        val conditionTitle = dialogView.findViewById<TextView>(R.id.conditionTitle)
         val conditionDescription = dialogView.findViewById<TextView>(R.id.conditionDescription)
         val preventionTipsContainer = dialogView.findViewById<LinearLayout>(R.id.preventionTipsContainer)
         val treatmentTipsContainer = dialogView.findViewById<LinearLayout>(R.id.treatmentTipsContainer)
@@ -1050,7 +1049,8 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         if (totalConditions == 1 && detectionsByCondition[primaryCondition]?.size == 1) {
             // Single plant with single condition
             conditionDescription.text = primaryCondition
-            conditionDescription.textSize = 20f  // Larger text for single condition
+            conditionDescription.textSize = 16f
+           // Larger text for single condition
         } else {
             // Multiple plants or conditions
             val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
@@ -1078,7 +1078,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     val headerText = TextView(this)
                     headerText.text = condName
                     headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
-                    headerText.textSize = 16f
+                    headerText.textSize = 12f
                     headerText.setTypeface(null, Typeface.BOLD)
                     headerText.setPadding(0, 8, 0, 8)
                     preventionTipsContainer.addView(headerText)
@@ -1098,7 +1098,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             val naText = TextView(this)
             naText.text = "N/A"
             naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
-            naText.textSize = 14f
+            naText.textSize = 10f
             naText.setPadding(0, 8, 0, 8)
             preventionTipsContainer.addView(naText)
         }
@@ -1116,7 +1116,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     val headerText = TextView(this)
                     headerText.text = condName
                     headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
-                    headerText.textSize = 16f
+                    headerText.textSize = 12f
                     headerText.setTypeface(null, Typeface.BOLD)
                     headerText.setPadding(0, 8, 0, 8)
                     treatmentTipsContainer.addView(headerText)
@@ -1134,7 +1134,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     val naText = TextView(this)
                     naText.text = "N/A"
                     naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
-                    naText.textSize = 14f
+                    naText.textSize = 10f
                     naText.setPadding(16, 4, 0, 4)
                     treatmentTipsContainer.addView(naText)
                 }
@@ -1146,7 +1146,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             val naText = TextView(this)
             naText.text = "N/A"
             naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
-            naText.textSize = 14f
+            naText.textSize = 10f
             naText.setPadding(0, 8, 0, 8)
             treatmentTipsContainer.addView(naText)
         }

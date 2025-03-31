@@ -6,18 +6,6 @@
     android:padding="16dp"
     android:background="@android:color/white">
 
-<!--    <TextView-->
-<!--        android:id="@+id/conditionTitle"-->
-<!--        android:layout_width="0dp"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:text="Condition Name"-->
-<!--        android:textColor="@android:color/black"-->
-<!--        android:textSize="20sp"-->
-<!--        android:textStyle="bold"-->
-<!--        app:layout_constraintEnd_toStartOf="@+id/closeButton"-->
-<!--        app:layout_constraintStart_toStartOf="parent"-->
-<!--        app:layout_constraintTop_toTopOf="parent" />-->
-
     <ImageButton
         android:id="@+id/closeButton"
         android:layout_width="wrap_content"
@@ -29,24 +17,13 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
-<!--    <TextView-->
-<!--        android:id="@+id/conditionDescription"-->
-<!--        android:layout_width="0dp"-->
-<!--        android:layout_height="wrap_content"-->
-<!--        android:layout_marginTop="8dp"-->
-<!--        android:text="Description of the condition"-->
-<!--        android:textColor="#555555"-->
-<!--        android:textSize="14sp"-->
-<!--        app:layout_constraintEnd_toEndOf="parent"-->
-<!--        app:layout_constraintStart_toStartOf="parent"-->
-<!--        app:layout_constraintTop_toBottomOf="@+id/conditionTitle" />-->
     <TextView
         android:id="@+id/conditionDescription"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Condition Name"
         android:textColor="@android:color/black"
-        android:textSize="18sp"
+        android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toStartOf="@+id/closeButton"
         app:layout_constraintStart_toStartOf="parent"
@@ -166,15 +143,24 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/divider1" />
 
-    <LinearLayout
-        android:id="@+id/preventionTipsContainer"
+    <!-- Simple ScrollView for prevention tips -->
+    <ScrollView
+        android:id="@+id/preventionScrollView"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="100dp"
         android:layout_marginTop="8dp"
-        android:orientation="vertical"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/preventionHeader" />
+        app:layout_constraintTop_toBottomOf="@+id/preventionHeader">
+
+        <LinearLayout
+            android:id="@+id/preventionTipsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
 
     <View
         android:id="@+id/divider2"
@@ -184,7 +170,7 @@
         android:background="#DDDDDD"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/preventionTipsContainer" />
+        app:layout_constraintTop_toBottomOf="@+id/preventionScrollView" />
 
     <TextView
         android:id="@+id/treatmentHeader"
@@ -198,13 +184,23 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/divider2" />
 
-    <LinearLayout
-        android:id="@+id/treatmentTipsContainer"
+    <!-- Simple ScrollView for treatment tips -->
+    <ScrollView
+        android:id="@+id/treatmentScrollView"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:layout_height="100dp"
+        android:layout_marginTop="8dp"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/treatmentHeader" />
+        app:layout_constraintTop_toBottomOf="@+id/treatmentHeader">
+
+        <LinearLayout
+            android:id="@+id/treatmentTipsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
