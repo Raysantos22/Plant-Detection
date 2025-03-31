@@ -1,35 +1,147 @@
 <?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="200dp"
-    android:height="100dp"
+    android:height="200dp"
     android:viewportWidth="200"
-    android:viewportHeight="100">
+    android:viewportHeight="200">
 
-    <!-- Leaf -->
-
-
-    <!-- Tomato -->
+    <!-- Tomato (center) -->
     <path
         android:fillColor="#F44336"
-        android:pathData="M100,50m-25,0a25,25 0,1 1,50 0a25,25 0,1 1,-50 0" />
+        android:pathData="M100,100m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0" />
     <path
-        android:pathData="M90,30C95,25 105,25 110,30"
+        android:pathData="M90,80C95,75 105,75 110,80"
         android:strokeColor="#558B2F"
         android:strokeWidth="3"
         android:fillColor="#00000000" />
     <path
-        android:pathData="M105,30C110,20 115,25 115,35"
+        android:pathData="M105,80C110,70 115,75 115,85"
         android:strokeColor="#558B2F"
         android:strokeWidth="3"
         android:fillColor="#00000000" />
 
-    <!-- Eggplant -->
+    <!-- Eggplant (top right) -->
     <path
         android:fillColor="#5E35B1"
-        android:pathData="M130,30C125,25 130,20 140,30C150,40 155,60 145,65C135,70 125,60 130,30Z" />
+        android:pathData="M140,60C135,55 140,50 150,60C160,70 165,90 155,95C145,100 135,90 140,60Z" />
     <path
         android:fillColor="#558B2F"
         android:strokeColor="#558B2F"
         android:strokeWidth="3"
-        android:pathData="M135,30C130,20 125,15 135,15C145,15 135,25 135,30Z" />
+        android:pathData="M145,60C140,50 135,45 145,45C155,45 145,55 145,60Z" />
+
+    <!-- Bitter Gourd (bottom left) -->
+    <group android:translateX="100" android:translateY="30" android:rotation="20">
+        <!-- Stem and leaf -->
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-10,-10C-15,-15 -20,-12 -17,-5C-14,2 -10,0 -10,0" />
+        <path
+            android:fillColor="#8BC34A"
+            android:pathData="M0,-15C5,-20 10,-17 7,-10C4,-3 0,-5 0,-5" />
+        <path
+            android:fillColor="#7CB342"
+            android:pathData="M-10,0L0,-5C0,-5 3,-20 -5,-20C-13,-20 -10,0 -10,0Z" />
+
+        <!-- Bitter gourd body -->
+        <path
+            android:fillColor="#7CB342"
+            android:pathData="M-15,5C-20,15 -22,30 -15,45C-13,50 -7,50 -5,45C2,30 0,15 -5,5C-7,2 -13,2 -15,5Z" />
+
+        <!-- Bitter gourd ridges/bumps (simplified) -->
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-18,10C-19,12 -14,13 -12,11C-10,9 -9,8 -10,6C-11,4 -17,8 -18,10Z" />
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-2,10C-1,12 -6,13 -8,11C-10,9 -11,8 -10,6C-9,4 -3,8 -2,10Z" />
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-20,20C-21,22 -16,23 -14,21C-12,19 -11,18 -12,16C-13,14 -19,18 -20,20Z" />
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M0,20C1,22 -4,23 -6,21C-8,19 -9,18 -8,16C-7,14 -1,18 0,20Z" />
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-18,30C-19,32 -14,33 -12,31C-10,29 -9,28 -10,26C-11,24 -17,28 -18,30Z" />
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-2,30C-1,32 -6,33 -8,31C-10,29 -11,28 -10,26C-9,24 -3,28 -2,30Z" />
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-16,40C-17,42 -12,43 -10,41C-8,39 -7,38 -8,36C-9,34 -15,38 -16,40Z" />
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-4,40C-3,42 -8,43 -10,41C-12,39 -13,38 -12,36C-11,34 -5,38 -4,40Z" />
+    </group>
+
+    <!-- Okra (top left) -->
+    <group android:translateX="40" android:translateY="60" android:rotation="-25">
+        <!-- Stem and leaf -->
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M0,-20C-2,-25 -7,-23 -5,-17C-3,-11 0,-10 0,-10" />
+        <path
+            android:fillColor="#8BC34A"
+            android:pathData="M5,-20C8,-25 13,-23 11,-17C9,-11 5,-10 5,-10" />
+
+        <!-- Okra body -->
+        <path
+            android:fillColor="#8BC34A"
+            android:pathData="M-5,-5C-8,0 -10,10 -7,30C-6,37 0,45 5,45C10,45 15,37 17,30C20,10 18,0 15,-5C12,-10 -2,-10 -5,-5Z" />
+
+        <!-- Okra ridges -->
+        <path
+            android:pathData="M-5,0C2,5 8,5 15,0"
+            android:strokeColor="#558B2F"
+            android:strokeWidth="1"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M-6,10C2,15 8,15 16,10"
+            android:strokeColor="#558B2F"
+            android:strokeWidth="1"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M-6,20C2,25 8,25 16,20"
+            android:strokeColor="#558B2F"
+            android:strokeWidth="1"
+            android:fillColor="#00000000" />
+        <path
+            android:pathData="M-6,30C2,35 8,35 16,30"
+            android:strokeColor="#558B2F"
+            android:strokeWidth="1"
+            android:fillColor="#00000000" />
+
+        <!-- Okra top cap -->
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M-3,-7C-3,-10 3,-10 3,-10L5,-10L7,-10C7,-10 13,-10 13,-7C13,-4 10,0 5,0C0,0 -3,-4 -3,-7Z" />
+    </group>
+
+    <!-- Chili Pepper (bottom right) -->
+    <group android:translateX="130" android:translateY="30" android:rotation="40">
+        <!-- Stem and leaf -->
+        <path
+            android:fillColor="#558B2F"
+            android:pathData="M0,-15C-2,-20 -5,-23 -3,-27C-1,-31 5,-30 5,-25C5,-20 3,-20 0,-15" />
+        <path
+            android:fillColor="#8BC34A"
+            android:pathData="M10,-20C15,-23 18,-27 22,-25C26,-23 24,-17 19,-17C14,-17 10,-18 10,-20" />
+
+        <!-- Chili body -->
+        <path
+            android:fillColor="#FF3D00"
+            android:pathData="M0,-10C-5,-5 -10,10 -8,25C-6,40 -2,50 0,50C2,50 6,40 8,25C10,10 5,-5 0,-10Z" />
+
+        <!-- Chili top cap -->
+        <path
+            android:fillColor="#7CB342"
+            android:pathData="M-3,-10C-3,-13 3,-13 3,-13C3,-13 4,-15 3,-17C2,-19 -2,-19 -3,-17C-4,-15 -3,-13 -3,-13C-3,-13 -7,-13 -7,-10C-7,-7 -3,-5 0,-5C3,-5 7,-7 7,-10C7,-13 3,-13 3,-13" />
+
+        <!-- Chili highlight -->
+        <path
+            android:fillColor="#FFCCBC"
+            android:fillAlpha="0.3"
+            android:pathData="M-5,5C-3,7 3,7 5,5" />
+    </group>
 </vector>

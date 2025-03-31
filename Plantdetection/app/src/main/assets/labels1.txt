@@ -1,10 +1,14 @@
-Anthracnose (Diseased)
+Anthracnose (Chili Pepper) (Diseased)
 Aphids (Infested)
-Blossom End Rot (Diseased)
-Collectotrichum rot (Diseased)
+Blossom End Rot (Tomato) (Diseased)
+Blossom Blight (Okra) (Diseased)
 Cutworm (Infested)
 Fruit Fly (Infested)
+Healthy bitter gourd
+Healthy Chili Pepper
+Healthy okra
 Healthy Tomato
 Healthy eggplant
 Hippodamia Variegata/Lady Bug
-Melon Thrips (Diseased)
+Melon Thrips (Eggplant) (Diseased)
+Phytophthora Fruit Rot (Bitter Gourd) (Diseased)

@@ -41,6 +41,44 @@
             android:layout_marginBottom="16dp"
             android:text="Condition description goes here" />
 
-    </LinearLayout>
+        <!-- Early Signs Section - Only visible for disease/pest conditions -->
+        <LinearLayout
+            android:id="@+id/earlySignsSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone">
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/earlySignsText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:text="Early Signs: Characteristic signs to watch for"
+                android:textColor="@color/orange"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+
+            <ImageView
+                android:id="@+id/earlySignsImage"
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/ic_plant_task_reminder"
+                android:contentDescription="Early Signs Image"/>
+        </LinearLayout>
+    </LinearLayout>
 </androidx.cardview.widget.CardView>

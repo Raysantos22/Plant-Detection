@@ -64,7 +64,7 @@
             android:exported="false">
         </activity>
         <activity
-            android:name="com.PlantDetection.DetectableConditionsActivity"
+            android:name=".DetectableConditionsActivity"
             android:exported="false"
             android:parentActivityName=".VegetableSelectionActivity" />
         <!-- Notification Receivers -->

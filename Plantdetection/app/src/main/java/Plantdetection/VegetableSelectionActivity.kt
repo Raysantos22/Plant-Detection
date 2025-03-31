@@ -28,13 +28,13 @@ class VegetableSelectionActivity : AppCompatActivity() {
         binding.plantDetectionButton.alpha = 1.0f
 
         // Update text to indicate all conditions can be viewed
-        binding.detectableConditionsText.text = "View all detectable conditions for both plants"
+        binding.detectableConditionsText.text = "View all detectable conditions for all vegetables"
 
         setupClickListeners()
     }
 
     private fun setupClickListeners() {
-        // Vegetable selection logic - only tomato and eggplant
+        // Vegetable selection logic - all vegetable types
         binding.tomatoContainer.setOnClickListener {
             selectVegetable("Tomato")
             highlightSelectedVegetable(binding.tomatoImage)
@@ -43,6 +43,21 @@ class VegetableSelectionActivity : AppCompatActivity() {
         binding.eggplantContainer.setOnClickListener {
             selectVegetable("Eggplant")
             highlightSelectedVegetable(binding.eggplantImage)
+        }
+
+        binding.okraContainer.setOnClickListener {
+            selectVegetable("Okra")
+            highlightSelectedVegetable(binding.okraImage)
+        }
+
+        binding.bitterGourdContainer.setOnClickListener {
+            selectVegetable("Bitter Gourd")
+            highlightSelectedVegetable(binding.bitterGourdImage)
+        }
+
+        binding.chiliPepperContainer.setOnClickListener {
+            selectVegetable("Chili Pepper")
+            highlightSelectedVegetable(binding.chiliPepperImage)
         }
 
         binding.selectButton.setOnClickListener {
@@ -87,6 +102,15 @@ class VegetableSelectionActivity : AppCompatActivity() {
         binding.tomatoImage.setBackgroundResource(0)
         binding.eggplantImage.setBackgroundResource(0)
 
+        // Reset new vegetable borders if they exist
+        try {
+            binding.okraImage.setBackgroundResource(0)
+            binding.bitterGourdImage.setBackgroundResource(0)
+            binding.chiliPepperImage.setBackgroundResource(0)
+        } catch (e: Exception) {
+            // If these views don't exist yet, just continue
+        }
+
         // Highlight selected vegetable
         selectedImageView.setBackgroundResource(R.drawable.selected_vegetable_border)
     }
@@ -96,8 +120,7 @@ class VegetableSelectionActivity : AppCompatActivity() {
         val detectableConditions = when (vegetable) {
             "Tomato" -> listOf(
                 "Healthy Tomato",
-                "Anthracnose (Diseased)",
-                "Blossom End Rot (Diseased)",
+                "Blossom End Rot (Tomato) (Diseased)",
                 "Aphids (Infested)",
                 "Cutworm (Infested)",
                 "Fruit Fly (Infested)",
@@ -105,8 +128,31 @@ class VegetableSelectionActivity : AppCompatActivity() {
             )
             "Eggplant" -> listOf(
                 "Healthy eggplant",
-                "Collectotrichum rot (Diseased)",
-                "Melon Thrips (Diseased)",
+                "Melon Thrips (Eggplant) (Diseased)",
+                "Aphids (Infested)",
+                "Cutworm (Infested)",
+                "Fruit Fly (Infested)",
+                "Hippodamia Variegata/Lady Bug"
+            )
+            "Okra" -> listOf(
+                "Healthy okra",
+                "Blossom Blight (Okra) (Diseased)",
+                "Aphids (Infested)",
+                "Cutworm (Infested)",
+                "Fruit Fly (Infested)",
+                "Hippodamia Variegata/Lady Bug"
+            )
+            "Bitter Gourd" -> listOf(
+                "Healthy bitter gourd",
+                "Phytophthora Fruit Rot (Bitter Gourd) (Diseased)",
+                "Aphids (Infested)",
+                "Cutworm (Infested)",
+                "Fruit Fly (Infested)",
+                "Hippodamia Variegata/Lady Bug"
+            )
+            "Chili pepper" -> listOf(
+                "Healthy Chili pepper",
+                "Anthracnose (Chili Pepper) (Diseased)",
                 "Aphids (Infested)",
                 "Cutworm (Infested)",
                 "Fruit Fly (Infested)",

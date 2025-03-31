@@ -13,7 +13,6 @@ import com.PlantDetection.R
 /**
  * Adapter for displaying a list of plants in a RecyclerView
  */
-// Updated PlantAdapter implementation
 class PlantAdapter(
     private var plants: List<PlantDatabaseManager.Plant>,
     private val onItemClick: (PlantDatabaseManager.Plant) -> Unit,
@@ -79,6 +78,9 @@ class PlantAdapter(
             val iconRes = when (plant.type.lowercase()) {
                 "tomato" -> R.drawable.tomato
                 "eggplant" -> R.drawable.eggplant
+                "okra" -> R.drawable.okra
+                "bitter gourd" -> R.drawable.bitter_gourd
+                "chili pepper" -> R.drawable.chili_pepper
                 else -> R.drawable.vegetable_logo
             }
             plantIcon.setImageResource(iconRes)
@@ -102,8 +104,16 @@ class PlantAdapter(
                 }
 
                 // Separate healthy and diseased conditions
-                val healthyConditions = conditionCounts.filter { it.key.contains("Healthy", ignoreCase = true) }
-                val diseaseConditions = conditionCounts.filter { !it.key.contains("Healthy", ignoreCase = true) }
+                val healthyConditions = conditionCounts.filter {
+                    it.key.contains("Healthy", ignoreCase = true) ||
+                            it.key.contains("Lady Bug", ignoreCase = true) ||
+                            it.key.contains("Hippodamia", ignoreCase = true)
+                }
+                val diseaseConditions = conditionCounts.filter {
+                    !it.key.contains("Healthy", ignoreCase = true) &&
+                            !it.key.contains("Lady Bug", ignoreCase = true) &&
+                            !it.key.contains("Hippodamia", ignoreCase = true)
+                }
 
                 // Create a concise status string showing counts for each category
                 val healthyCount = healthyConditions.values.sum()
@@ -130,12 +140,41 @@ class PlantAdapter(
                 plantStatus.setTextColor(ContextCompat.getColor(itemView.context, statusColor))
             } else {
                 // Regular single plant
-                plantStatus.text = plant.currentCondition ?: "Healthy"
-                val statusColor = if (plant.currentCondition == null || plant.currentCondition?.startsWith("Healthy") == true) {
-                    R.color.app_dark_green
-                } else {
-                    R.color.orange
+                // Update to account for new conditions in the dataset
+                val condition = plant.currentCondition
+
+                // Check if the condition is beneficial (like lady bugs)
+                val isBeneficial = condition?.contains("Lady Bug", ignoreCase = true) == true ||
+                        condition?.contains("Hippodamia", ignoreCase = true) == true
+
+                // Check if condition refers to known infestations
+                val isPest = condition?.contains("(Infested)", ignoreCase = true) == true ||
+                        condition?.contains("Aphids", ignoreCase = true) == true ||
+                        condition?.contains("Cutworm", ignoreCase = true) == true ||
+                        condition?.contains("Fruit Fly", ignoreCase = true) == true
+
+                // Check if condition refers to disease
+                val isDisease = condition?.contains("(Diseased)", ignoreCase = true) == true ||
+                        condition?.contains("Blossom End Rot", ignoreCase = true) == true ||
+                        condition?.contains("Anthracnose", ignoreCase = true) == true ||
+                        condition?.contains("Phytophthora", ignoreCase = true) == true ||
+                        condition?.contains("Blossom Blight", ignoreCase = true) == true ||
+                        condition?.contains("Melon Thrips", ignoreCase = true) == true
+
+                plantStatus.text = when {
+                    condition == null || condition.contains("Healthy", ignoreCase = true) -> "Healthy"
+                    isBeneficial -> "Beneficial Insects"
+                    isPest -> "Pest Infestation"
+                    isDisease -> "Disease Detected"
+                    else -> "Unknown Condition"
                 }
+
+                val statusColor = when {
+                    condition == null || condition.contains("Healthy", ignoreCase = true) -> R.color.app_dark_green
+                    isBeneficial -> R.color.app_dark_green // Beneficial insects are a positive thing
+                    else -> R.color.orange
+                }
+
                 plantStatus.setTextColor(ContextCompat.getColor(itemView.context, statusColor))
             }
 

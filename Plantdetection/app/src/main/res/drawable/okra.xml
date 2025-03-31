@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Stem and leaf -->
+    <path
+        android:fillColor="#558B2F"
+        android:pathData="M50,15C48,10 43,12 45,18C47,24 50,25 50,25" />
+    <path
+        android:fillColor="#8BC34A"
+        android:pathData="M55,15C58,10 63,12 61,18C59,24 55,25 55,25" />
+
+    <!-- Okra body -->
+    <path
+        android:fillColor="#8BC34A"
+        android:pathData="M45,30C42,35 40,45 43,65C44,72 50,80 55,80C60,80 65,72 67,65C70,45 68,35 65,30C62,25 48,25 45,30Z" />
+
+    <!-- Okra ridges -->
+    <path
+        android:pathData="M45,35C52,40 58,40 65,35"
+        android:strokeColor="#558B2F"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M44,45C52,50 58,50 66,45"
+        android:strokeColor="#558B2F"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M44,55C52,60 58,60 66,55"
+        android:strokeColor="#558B2F"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+    <path
+        android:pathData="M44,65C52,70 58,70 66,65"
+        android:strokeColor="#558B2F"
+        android:strokeWidth="1"
+        android:fillColor="#00000000" />
+
+    <!-- Okra top cap -->
+    <path
+        android:fillColor="#558B2F"
+        android:pathData="M47,28C47,25 53,25 53,25L55,25L57,25C57,25 63,25 63,28C63,31 60,35 55,35C50,35 47,31 47,28Z" />
+</vector>

@@ -20,7 +20,7 @@ import java.util.*
 /**
  * Class to manage plant monitoring notifications and tasks
  */
-class PlantMonitoringManager(private val context: Context) {
+class   PlantMonitoringManager(private val context: Context) {
 
     companion object {
         private const val TAG = "PlantMonitoring"

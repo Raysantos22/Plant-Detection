@@ -20,9 +20,438 @@ object PlantConditionData {
     )
 
     val conditions = mapOf(
-        "Anthracnose (Diseased)" to PlantCondition(
-            "Anthracnose (Diseased)",
-            "A fungal disease that causes dark, sunken lesions on fruits, stems, and leaves.",
+        // Existing conditions
+        "Aphids (Infested)" to PlantCondition(
+            "Aphids",
+            "Small sap-sucking insects that cluster on stems and the undersides of leaves, causing leaf curl and stunted growth.",
+            listOf(
+                "Encourage beneficial insects like ladybugs and lacewings",
+                "Use reflective mulch to deter aphids",
+                "Plant companion plants like marigolds or nasturtiums",
+                "Avoid excessive nitrogen fertilization",
+                "Use preventative neem oil sprays"
+            ),
+            listOf(
+                "Spray plants with strong water jet to dislodge aphids",
+                "Apply insecticidal soap or neem oil to affected areas",
+                "Introduce beneficial insects like ladybugs",
+                "Apply horticultural oil to smother aphids",
+                "For severe infestations, consider systemic insecticides"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Water Spray Treatment",
+                    "Use strong water spray to dislodge aphids from plants",
+                    2,
+                    listOf("Garden hose with spray nozzle"),
+                    listOf(
+                        "Adjust hose to strong spray setting",
+                        "Target aphid colonies on undersides of leaves",
+                        "Spray in morning so plants can dry quickly",
+                        "Be thorough but careful not to damage plants",
+                        "Repeat every 2-3 days for at least a week"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Insecticidal Soap",
+                    "Apply insecticidal soap for direct control",
+                    5,
+                    listOf("Insecticidal soap", "Spray bottle"),
+                    listOf(
+                        "Mix soap according to package directions",
+                        "Apply directly to aphid colonies",
+                        "Cover all plant surfaces, especially leaf undersides",
+                        "Apply in early morning or evening, not during hot sun",
+                        "Repeat every 5-7 days for 2-3 applications"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Neem Oil",
+                    "Use neem oil as a natural insecticide and repellent",
+                    7,
+                    listOf("Neem oil", "Sprayer", "Dish soap (as emulsifier)"),
+                    listOf(
+                        "Mix 2 tsp neem oil with 1 tsp mild dish soap in 1 quart water",
+                        "Shake well and apply to all plant surfaces",
+                        "Focus on undersides of leaves where aphids hide",
+                        "Apply in early morning or evening, avoiding hot sun",
+                        "Repeat weekly for 2-3 weeks"
+                    )
+                ),
+                TreatmentTask(
+                    "Introduce Beneficial Insects",
+                    "Release ladybugs or lacewings to control aphid population",
+                    14,
+                    listOf("Purchased ladybugs or lacewing eggs", "Spray bottle with water"),
+                    listOf(
+                        "Release beneficial insects in evening or early morning",
+                        "Lightly mist plants with water before release",
+                        "Place insects near aphid colonies",
+                        "Provide water source (shallow dish with stones)",
+                        "Avoid applying insecticides after release"
+                    )
+                )
+            )
+        ),
+        "Cutworm (Infested)" to PlantCondition(
+            "Cutworm",
+            "Caterpillars that cut young plants off at soil level, often feeding at night and hiding in soil during the day.",
+            listOf(
+                "Place protective collars around seedlings",
+                "Clear garden bed of debris before planting",
+                "Till soil 2-3 weeks before planting",
+                "Encourage natural predators like birds and ground beetles",
+                "Plant marigolds as a deterrent"
+            ),
+            listOf(
+                "Handpick cutworms at night with flashlight",
+                "Apply diatomaceous earth around plant stems",
+                "Use Bacillus thuringiensis (Bt) for biological control",
+                "Apply nematodes to soil to target larvae",
+                "Create barriers with cardboard collars or aluminum foil"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Install Protective Collars",
+                    "Place protective barriers around plant stems",
+                    1,
+                    listOf("Cardboard tubes or aluminum foil", "Scissors", "Small stakes (optional)"),
+                    listOf(
+                        "Cut cardboard tubes to 2-3 inches in height",
+                        "Wrap around plant stems, pushing 1 inch into soil",
+                        "Ensure collar extends about 2 inches above soil",
+                        "For aluminum foil, wrap loosely around stem and extend into soil",
+                        "Secure with small stakes if needed"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Diatomaceous Earth",
+                    "Create a protective barrier around plants",
+                    7,
+                    listOf("Food-grade diatomaceous earth", "Applicator or shaker"),
+                    listOf(
+                        "Apply a ring of DE around each plant, 2-3 inches from stem",
+                        "Create a complete circle about 1/4 inch thick",
+                        "Apply when soil is dry for best effectiveness",
+                        "Reapply after rainfall or heavy watering",
+                        "Avoid breathing dust by wearing a mask during application"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Bt Treatment",
+                    "Use Bacillus thuringiensis for biological control",
+                    7,
+                    listOf("Bt spray or powder", "Sprayer or applicator"),
+                    listOf(
+                        "Mix Bt according to package directions",
+                        "Apply to soil around plant bases and lower stems",
+                        "Apply in evening for best results",
+                        "Water lightly after application",
+                        "Repeat every 7-10 days if cutworm activity continues"
+                    )
+                ),
+                TreatmentTask(
+                    "Night Inspection",
+                    "Manually remove cutworms during their active hours",
+                    3,
+                    listOf("Flashlight", "Gloves", "Container with soapy water"),
+                    listOf(
+                        "Search for cutworms after dark with flashlight",
+                        "Check soil around damaged plants",
+                        "Look for C-shaped grayish or brown caterpillars",
+                        "Hand pick and drop into soapy water",
+                        "Mark affected areas for follow-up treatment"
+                    )
+                )
+            )
+        ),
+        "Fruit Fly (Infested)" to PlantCondition(
+            "Fruit Fly",
+            "Small flies that lay eggs in ripening fruits, leading to maggot infestations and fruit rot.",
+            listOf(
+                "Harvest fruits as soon as they ripen",
+                "Remove fallen or damaged fruits promptly",
+                "Use fruit fly traps around garden perimeter",
+                "Cover fruits with protective bags or netting",
+                "Maintain garden sanitation by removing debris"
+            ),
+            listOf(
+                "Set up vinegar and soap traps to catch adult flies",
+                "Use sticky traps near fruiting plants",
+                "Apply organic fruit fly bait spray around plants",
+                "Use protective netting or bags for individual fruits",
+                "Remove and destroy infested fruits immediately"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Set Up DIY Traps",
+                    "Create and place fruit fly traps around plants",
+                    3,
+                    listOf("Small containers", "Apple cider vinegar", "Dish soap", "Plastic wrap", "Toothpick"),
+                    listOf(
+                        "Fill containers 1/3 full with apple cider vinegar",
+                        "Add a few drops of dish soap to break surface tension",
+                        "Cover with plastic wrap and secure with rubber band",
+                        "Poke small holes in plastic wrap with toothpick",
+                        "Place traps around fruiting plants and check/replace weekly"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Fruit Fly Bait",
+                    "Apply organic fruit fly bait to attract and kill adults",
+                    7,
+                    listOf("Organic fruit fly bait/spray", "Sprayer", "Protective gloves"),
+                    listOf(
+                        "Mix bait according to package instructions",
+                        "Apply to non-fruiting parts of plants and nearby surfaces",
+                        "Focus on areas where fruit flies congregate",
+                        "Apply in morning and avoid spraying fruits directly",
+                        "Reapply every 7-10 days or after rainfall"
+                    )
+                ),
+                TreatmentTask(
+                    "Protective Covering",
+                    "Cover developing fruits to prevent egg-laying",
+                    1,
+                    listOf("Fine mesh bags or netting", "Garden ties or twist ties"),
+                    listOf(
+                        "Select developing fruits before fruit fly infestation",
+                        "Place mesh bag over fruit or fruit cluster",
+                        "Secure opening around stem with tie",
+                        "Ensure covering is secure but not restricting growth",
+                        "Check regularly and adjust as fruits grow"
+                    )
+                ),
+                TreatmentTask(
+                    "Sanitation Measures",
+                    "Remove potential breeding sites and infested fruits",
+                    2,
+                    listOf("Garden gloves", "Sealed disposal bags"),
+                    listOf(
+                        "Inspect all fruits on plants for signs of infestation",
+                        "Remove any fruits showing soft spots or small holes",
+                        "Pick up all fallen fruits from ground",
+                        "Place collected fruits in sealed bags for disposal",
+                        "Do not compost infested fruits"
+                    )
+                )
+            )
+        ),
+        "Hippodamia Variegata/Lady Bug" to PlantCondition(
+            "Hippodamia Variegata/Lady Bug",
+            "Beneficial insects that prey on aphids, mites, and other garden pests. These spotted beetles help control pest populations naturally.",
+            listOf(
+                "Plant diverse flowering plants to attract lady bugs",
+                "Avoid using broad-spectrum insecticides",
+                "Provide water sources in the garden",
+                "Plant dill, fennel, or yarrow as attractant plants",
+                "Create overwintering sites with piles of leaves or garden debris"
+            ),
+            listOf(
+                "Lady bugs are beneficial - no treatment needed",
+                "Encourage them to stay by providing food sources",
+                "Release commercially purchased lady bugs at dusk",
+                "Spray plants with sugar water solution to attract them",
+                "Avoid insecticides that could harm beneficial insects"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Attract More Lady Bugs",
+                    "Create an environment attractive to lady bugs",
+                    14,
+                    listOf("Mixed flower seeds", "Shallow water dish", "Small stones"),
+                    listOf(
+                        "Plant diverse nectar-producing flowers throughout garden",
+                        "Create shallow water source with stones for safe landing",
+                        "Allow some aphids to remain as food source",
+                        "Plant dill, fennel, cilantro, or yarrow nearby",
+                        "Avoid using any pesticides in the area"
+                    )
+                ),
+                TreatmentTask(
+                    "Release Purchased Lady Bugs",
+                    "Properly introduce purchased lady bugs to your garden",
+                    1,
+                    listOf("Purchased lady bugs", "Spray bottle with water"),
+                    listOf(
+                        "Keep lady bugs refrigerated until release time",
+                        "Release in evening or early morning when cool",
+                        "Mist plants with water before release",
+                        "Place lady bugs at base of plants with aphids",
+                        "Release near flowers for nectar source"
+                    )
+                ),
+                TreatmentTask(
+                    "Create Sugar Water Attractant",
+                    "Make supplemental food to keep lady bugs in garden",
+                    5,
+                    listOf("Sugar", "Spray bottle", "Water"),
+                    listOf(
+                        "Mix 1 tablespoon sugar in 1 quart of water",
+                        "Shake until dissolved",
+                        "Lightly mist plants in evening",
+                        "Focus on areas with pest problems",
+                        "Reapply every 5-7 days"
+                    )
+                ),
+                TreatmentTask(
+                    "Create Overwintering Sites",
+                    "Provide places for lady bugs to hibernate through winter",
+                    30,
+                    listOf("Fallen leaves", "Small wooden box with slits", "Straw"),
+                    listOf(
+                        "Create small piles of leaves in protected garden areas",
+                        "Place wooden box with slits in sheltered location",
+                        "Fill box with straw or dried leaves",
+                        "Position near plants that commonly have aphids",
+                        "Avoid disturbing these areas during winter"
+                    )
+                )
+            )
+        ),
+        "Blossom End Rot (Tomato) (Diseased)" to PlantCondition(
+            "Blossom End Rot (Tomato)",
+            "A physiological disorder in tomatoes caused by calcium deficiency, resulting in dark, sunken areas at the blossom end of fruits.",
+            listOf(
+                "Maintain consistent soil moisture",
+                "Test soil pH and maintain at 6.5",
+                "Add calcium to the soil before planting",
+                "Avoid excessive nitrogen fertilization",
+                "Mulch around plants to conserve moisture"
+            ),
+            listOf(
+                "Apply calcium foliar sprays",
+                "Maintain even watering schedule",
+                "Remove affected fruits to prevent stress on the plant",
+                "Add eggshells or calcium supplements to soil",
+                "Apply gypsum to soil to add calcium without changing pH"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Apply Calcium Solution",
+                    "Apply calcium foliar spray or calcium nitrate solution",
+                    7,
+                    listOf("Calcium nitrate or calcium chloride solution", "Sprayer"),
+                    listOf(
+                        "Mix 4 tablespoons of calcium nitrate in 1 gallon of water",
+                        "Apply as a foliar spray in early morning",
+                        "Alternatively, drench soil around plant base",
+                        "Repeat weekly until new fruits show no symptoms"
+                    )
+                ),
+                TreatmentTask(
+                    "Remove Affected Fruits",
+                    "Remove fruits showing blossom end rot to reduce plant stress",
+                    3,
+                    listOf("Pruning shears", "Disposal bag"),
+                    listOf(
+                        "Identify fruits with dark, sunken areas at bottom end",
+                        "Remove affected fruits completely",
+                        "Dispose of fruits (don't compost)"
+                    )
+                ),
+                TreatmentTask(
+                    "Improve Watering",
+                    "Establish consistent watering schedule to prevent fluctuations",
+                    1,
+                    listOf("Mulch", "Drip irrigation system (optional)", "Moisture meter"),
+                    listOf(
+                        "Apply 2-3 inches of mulch around plants to retain moisture",
+                        "Water deeply (1-2 inches) rather than frequently",
+                        "Water at soil level, not on foliage",
+                        "Monitor soil moisture with finger test or moisture meter",
+                        "Aim for consistent, even moisture"
+                    )
+                ),
+                TreatmentTask(
+                    "Add Calcium to Soil",
+                    "Add long-term calcium solutions to soil",
+                    14,
+                    listOf("Crushed eggshells or agricultural gypsum or lime"),
+                    listOf(
+                        "For immediate use: sprinkle 2-3 tablespoons of gypsum around each plant",
+                        "For long-term: work in crushed eggshells around plant base",
+                        "Water thoroughly after application",
+                        "Avoid adding lime unless soil pH test indicates acidity"
+                    )
+                )
+            )
+        ),
+        "Melon Thrips (Eggplant) (Diseased)" to PlantCondition(
+            "Melon Thrips (Eggplant)",
+            "Tiny insects that damage eggplants by sucking plant sap, causing silvering, scarring, and distortion of leaves.",
+            listOf(
+                "Use reflective mulch to deter thrips",
+                "Use blue or yellow sticky traps",
+                "Avoid planting near onions or garlic",
+                "Use floating row covers",
+                "Plant trap crops like basil or marigold"
+            ),
+            listOf(
+                "Apply insecticidal soap or neem oil",
+                "Use spinosad-based insecticides",
+                "Release predatory mites",
+                "Remove and destroy heavily infested leaves",
+                "Apply diatomaceous earth around plant base"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Apply Insecticidal Soap",
+                    "Treat plants with insecticidal soap to control thrips",
+                    3,
+                    listOf("Insecticidal soap", "Sprayer"),
+                    listOf(
+                        "Mix soap solution according to label directions",
+                        "Apply thoroughly to all plant surfaces, especially undersides of leaves",
+                        "Apply in early morning or evening, avoiding hot sun",
+                        "Ensure complete coverage for contact killing",
+                        "Repeat every 5-7 days for at least 3 applications"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Neem Oil",
+                    "Use neem oil as an organic control method",
+                    7,
+                    listOf("Neem oil", "Sprayer"),
+                    listOf(
+                        "Mix neem oil according to package directions",
+                        "Apply to all plant surfaces, especially leaf undersides",
+                        "Apply in early morning or evening, avoiding hot sun",
+                        "Repeat weekly for at least 3 applications",
+                        "Avoid applying when beneficial insects are active"
+                    )
+                ),
+                TreatmentTask(
+                    "Set Up Sticky Traps",
+                    "Use sticky traps to monitor and reduce thrips population",
+                    5,
+                    listOf("Blue or yellow sticky traps", "Wooden stakes"),
+                    listOf(
+                        "Place sticky traps at plant height around affected plants",
+                        "Use blue traps (most effective for thrips) or yellow traps",
+                        "Space traps every 3-5 feet around garden area",
+                        "Check traps regularly to monitor population",
+                        "Replace traps when surface becomes covered with insects"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Spinosad Treatment",
+                    "Use spinosad for more severe infestations",
+                    7,
+                    listOf("Spinosad-based insecticide", "Sprayer", "Protective gear"),
+                    listOf(
+                        "Mix spinosad product according to label instructions",
+                        "Apply thoroughly to all plant surfaces",
+                        "Apply in evening to minimize impact on beneficial insects",
+                        "Avoid applying near flowering plants when bees are active",
+                        "Repeat according to product instructions, typically every 7-10 days"
+                    )
+                )
+            )
+        ),
+        "Anthracnose (Chili Pepper) (Diseased)" to PlantCondition(
+            "Anthracnose (Chili Pepper)",
+            "A fungal disease that causes dark, sunken lesions on chili pepper fruits, stems, and leaves.",
             listOf(
                 "Use disease-free seeds and transplants",
                 "Rotate crops every 2-3 years",
@@ -89,143 +518,152 @@ object PlantConditionData {
                 )
             )
         ),
-        "Blossom End Rot (Diseased)" to PlantCondition(
-            "Blossom End Rot (Diseased)",
-            "A physiological disorder caused by calcium deficiency, resulting in dark, sunken areas at the blossom end of fruits.",
+        "Phytophthora Fruit Rot (Bitter Gourd) (Diseased)" to PlantCondition(
+            "Phytophthora Fruit Rot (Bitter Gourd)",
+            "A water mold disease causing water-soaked lesions on bitter gourd fruits that develop into white, fluffy fungal growth.",
             listOf(
-                "Maintain consistent soil moisture",
-                "Test soil pH and maintain at 6.5",
-                "Add calcium to the soil before planting",
-                "Avoid excessive nitrogen fertilization",
-                "Mulch around plants to conserve moisture"
+                "Plant on raised beds with good drainage",
+                "Rotate crops for at least 3 years",
+                "Use fungicide-treated seeds",
+                "Avoid overhead irrigation",
+                "Use drip irrigation and mulch to prevent soil splash"
             ),
             listOf(
-                "Apply calcium foliar sprays",
-                "Maintain even watering schedule",
-                "Remove affected fruits to prevent stress on the plant",
-                "Add eggshells or calcium supplements to soil",
-                "Apply gypsum to soil to add calcium without changing pH"
-            ),
-            listOf(
-                TreatmentTask(
-                    "Apply Calcium Solution",
-                    "Apply calcium foliar spray or calcium nitrate solution",
-                    7,
-                    listOf("Calcium nitrate or calcium chloride solution", "Sprayer"),
-                    listOf(
-                        "Mix 4 tablespoons of calcium nitrate in 1 gallon of water",
-                        "Apply as a foliar spray in early morning",
-                        "Alternatively, drench soil around plant base",
-                        "Repeat weekly until new fruits show no symptoms"
-                    )
-                ),
-                TreatmentTask(
-                    "Remove Affected Fruits",
-                    "Remove fruits showing blossom end rot to reduce plant stress",
-                    3,
-                    listOf("Pruning shears", "Disposal bag"),
-                    listOf(
-                        "Identify fruits with dark, sunken areas at bottom end",
-                        "Remove affected fruits completely",
-                        "Dispose of fruits (don't compost)"
-                    )
-                ),
-                TreatmentTask(
-                    "Improve Watering",
-                    "Establish consistent watering schedule to prevent fluctuations",
-                    1,
-                    listOf("Mulch", "Drip irrigation system (optional)", "Moisture meter"),
-                    listOf(
-                        "Apply 2-3 inches of mulch around plants to retain moisture",
-                        "Water deeply (1-2 inches) rather than frequently",
-                        "Water at soil level, not on foliage",
-                        "Monitor soil moisture with finger test or moisture meter",
-                        "Aim for consistent, even moisture"
-                    )
-                ),
-                TreatmentTask(
-                    "Add Calcium to Soil",
-                    "Add long-term calcium solutions to soil",
-                    14,
-                    listOf("Crushed eggshells or agricultural gypsum or lime"),
-                    listOf(
-                        "For immediate use: sprinkle 2-3 tablespoons of gypsum around each plant",
-                        "For long-term: work in crushed eggshells around plant base",
-                        "Water thoroughly after application",
-                        "Avoid adding lime unless soil pH test indicates acidity"
-                    )
-                )
-            )
-        ),
-        "Collectotrichum rot (Diseased)" to PlantCondition(
-            "Collectotrichum rot (Diseased)",
-            "A fungal disease causing circular sunken spots on fruits with pink spore masses.",
-            listOf(
-                "Plant resistant varieties",
-                "Use drip irrigation instead of overhead watering",
-                "Provide adequate spacing between plants",
-                "Apply fungicide preventatively in humid weather",
-                "Rotate crops and avoid planting in areas with previous infections"
-            ),
-            listOf(
-                "Remove and destroy infected fruits",
-                "Apply approved fungicides",
-                "Improve air circulation around plants",
-                "Sanitize garden tools after use",
-                "Apply organic fungicides like neem oil for minor infections"
+                "Remove and destroy all infected fruits and plant parts",
+                "Apply phosphorous acid or metalaxyl-based fungicides",
+                "Improve drainage around plants",
+                "Avoid working with plants when they're wet",
+                "Apply copper-based fungicides preventatively"
             ),
             listOf(
                 TreatmentTask(
                     "Remove Infected Fruits",
-                    "Remove all fruits showing symptoms to prevent spread",
-                    2,
-                    listOf("Gloves", "Disposal bags"),
+                    "Remove all infected fruits and plant parts to prevent spread",
+                    1,
+                    listOf("Pruning shears", "Disposal bags", "Disinfectant"),
                     listOf(
-                        "Identify fruits with circular sunken spots or pink spore masses",
-                        "Carefully remove all infected fruits",
-                        "Place in sealed bags for disposal (do not compost)",
-                        "Wash hands and sanitize tools after handling"
+                        "Identify fruits with water-soaked lesions or white fungal growth",
+                        "Cut off infected fruits with clean pruning shears",
+                        "Remove any infected leaves or stems",
+                        "Dispose of infected material in sealed bags (do not compost)",
+                        "Disinfect all tools after use with 10% bleach solution"
                     )
                 ),
                 TreatmentTask(
                     "Apply Fungicide Treatment",
-                    "Apply appropriate fungicide to stop disease spread",
+                    "Apply appropriate fungicide to prevent spread",
                     7,
-                    listOf("Approved fungicide (chlorothalonil, mancozeb, or copper-based)", "Sprayer", "Protective gear"),
+                    listOf("Phosphorous acid or metalaxyl-based fungicide", "Sprayer", "Protective gear"),
                     listOf(
                         "Mix fungicide according to label instructions",
-                        "Apply thoroughly, covering all plant surfaces",
-                        "Focus on remaining fruits and surrounding foliage",
-                        "Apply in early morning or evening for best absorption",
-                        "Repeat application every 7-10 days as instructed on label"
+                        "Apply thoroughly to all plant parts, especially fruits",
+                        "Apply in morning so plants can dry before evening",
+                        "Avoid watering for 24 hours after application",
+                        "Repeat application according to label, typically every 7-14 days"
                     )
                 ),
                 TreatmentTask(
-                    "Improve Growing Conditions",
-                    "Modify growing conditions to discourage disease development",
+                    "Improve Drainage",
+                    "Enhance drainage around plants to reduce moisture",
                     3,
-                    listOf("Pruning shears", "Mulch", "Drip irrigation supplies (optional)"),
+                    listOf("Garden fork", "Organic matter or sand", "Mulch"),
                     listOf(
-                        "Prune plants to improve air circulation",
-                        "Apply mulch to prevent soil splash onto plants",
-                        "Convert to drip irrigation if using overhead watering",
-                        "Ensure proper plant spacing"
+                        "Create drainage channels away from plants if water pools",
+                        "If soil is heavy, add organic matter or sand to improve structure",
+                        "Form soil into mounds around plant bases",
+                        "Apply 2-3 inches of mulch keeping it away from stems",
+                        "Consider adding agricultural gypsum to improve soil structure"
                     )
                 ),
                 TreatmentTask(
-                    "Sanitize Garden Area",
-                    "Clean area to reduce reinfection chances",
-                    7,
-                    listOf("10% bleach solution", "Spray bottle", "Clean rags"),
+                    "Preventative Spraying",
+                    "Apply copper-based fungicide to protect remaining fruits",
+                    10,
+                    listOf("Copper-based fungicide", "Sprayer", "Protective gear"),
                     listOf(
-                        "Sanitize all tools used on infected plants",
-                        "Clean plant supports and stakes",
-                        "Remove any plant debris from around affected plants",
-                        "Avoid working with plants when wet"
+                        "Mix copper fungicide according to label directions",
+                        "Apply to all plant surfaces as a preventative measure",
+                        "Focus on fruits and stems",
+                        "Apply in morning or evening, not during hot sun",
+                        "Repeat every 10-14 days until harvest"
                     )
                 )
             )
         ),
+        "Blossom Blight (Okra) (Diseased)" to PlantCondition(
+            "Blossom Blight (Okra)",
+            "A fungal disease affecting okra blossoms, causing flowers to develop brown spots, wilt, and fail to produce fruits.",
+            listOf(
+                "Provide adequate plant spacing for good air circulation",
+                "Avoid overhead watering; use drip irrigation",
+                "Rotate crops yearly",
+                "Remove plant debris after harvest",
+                "Apply preventative fungicides during flowering"
+            ),
+            listOf(
+                "Remove and destroy infected blossoms and fruits",
+                "Apply fungicides containing chlorothalonil or mancozeb",
+                "Improve air circulation by pruning surrounding vegetation",
+                "Avoid working with plants when wet",
+                "Apply copper-based fungicide as a preventative"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Remove Infected Blossoms",
+                    "Prune all infected blossoms and affected parts",
+                    2,
+                    listOf("Pruning shears", "Disposal bag", "Disinfectant"),
+                    listOf(
+                        "Identify blossoms with brown spots or wilting",
+                        "Cut off all infected flowers and any affected fruits",
+                        "Prune any stems showing signs of infection",
+                        "Dispose of plant material in sealed bags (do not compost)",
+                        "Disinfect tools between cuts with 10% bleach solution"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Fungicide",
+                    "Treat with appropriate fungicide to halt disease spread",
+                    7,
+                    listOf("Chlorothalonil or mancozeb fungicide", "Sprayer", "Protective gear"),
+                    listOf(
+                        "Mix fungicide according to label instructions",
+                        "Apply to all plant parts, focusing on blossoms and buds",
+                        "Apply in early morning or evening when pollinators are less active",
+                        "Ensure thorough coverage of plant surfaces",
+                        "Repeat every 7-10 days during flowering period"
+                    )
+                ),
+                TreatmentTask(
+                    "Improve Plant Environment",
+                    "Enhance growing conditions to discourage fungal development",
+                    3,
+                    listOf("Pruning shears", "Mulch", "Drip irrigation supplies (optional)"),
+                    listOf(
+                        "Thin plants if overcrowded to improve air circulation",
+                        "Remove surrounding weeds that may increase humidity",
+                        "Apply mulch to prevent soil splash onto plants",
+                        "Switch to drip irrigation if using overhead watering",
+                        "Support plants with stakes if they're falling over"
+                    )
+                ),
+                TreatmentTask(
+                    "Preventative Protection",
+                    "Apply copper-based fungicide to protect new flowers",
+                    10,
+                    listOf("Copper-based fungicide", "Sprayer", "Protective gear"),
+                    listOf(
+                        "Mix copper fungicide according to label directions",
+                        "Apply to all plant surfaces focusing on new growth",
+                        "Apply early in day to allow drying before evening",
+                        "Avoid application during flowering time if possible",
+                        "Repeat every 10-14 days as a preventative measure"
+                    )
+                )
+            )
+        ),
+
+        // New healthy plant conditions
         "Healthy Tomato" to PlantCondition(
             "Healthy Tomato",
             "Your tomato plant is healthy! Here are some tips to maintain its health.",
@@ -295,7 +733,7 @@ object PlantConditionData {
             )
         ),
         "Healthy eggplant" to PlantCondition(
-            "Healthy eggplant",
+            "Healthy Eggplant",
             "Your eggplant is healthy! Here are some tips to maintain its health.",
             listOf(
                 "Water deeply and consistently",
@@ -362,351 +800,206 @@ object PlantConditionData {
                 )
             )
         ),
-        "Aphids (Infested)" to PlantCondition(
-            "Aphids (Infested)",
-            "Small, soft-bodied insects that cluster on new growth and undersides of leaves, causing stunting, yellowing, and sticky honeydew residue.",
+        "Healthy okra" to PlantCondition(
+            "Healthy Okra",
+            "Your okra plants are healthy! Here are some tips to maintain their health and productivity.",
             listOf(
-                "Encourage beneficial insects like ladybugs and lacewings",
-                "Plant companion plants like marigolds, nasturtiums, or herbs",
-                "Avoid excessive nitrogen fertilizer which promotes tender growth",
-                "Use reflective mulch to confuse aphids",
-                "Regularly inspect plants for early detection"
+                "Water consistently, especially during hot weather",
+                "Apply balanced organic fertilizer every 3-4 weeks",
+                "Harvest pods frequently to encourage production",
+                "Provide full sun exposure",
+                "Mulch to retain moisture and suppress weeds"
             ),
             listOf(
-                "Spray plants forcefully with water to dislodge aphids",
-                "Apply insecticidal soap to affected areas",
-                "Use neem oil solution for persistent infestations",
-                "Introduce beneficial insects like ladybugs or lacewings",
-                "Apply diluted dish soap solution to affected areas"
-            ),
-            listOf(
-                TreatmentTask(
-                    "Water Spray Treatment",
-                    "Forcefully spray plants with water to dislodge aphids",
-                    1,
-                    listOf("Garden hose with adjustable nozzle"),
-                    listOf(
-                        "Adjust hose to medium-strong spray setting",
-                        "Target undersides of leaves where aphids congregate",
-                        "Spray in morning so plants can dry completely",
-                        "Repeat daily for 3-5 days for persistent infestations"
-                    )
-                ),
-                TreatmentTask(
-                    "Apply Insecticidal Soap",
-                    "Treat plants with insecticidal soap to kill aphids on contact",
-                    3,
-                    listOf("Insecticidal soap", "Spray bottle"),
-                    listOf(
-                        "Mix insecticidal soap according to package directions",
-                        "Spray all affected plant parts, especially leaf undersides",
-                        "Apply when temperatures are below 85°F to prevent leaf burn",
-                        "Repeat every 5-7 days until aphids are controlled"
-                    )
-                ),
-                TreatmentTask(
-                    "Neem Oil Application",
-                    "Apply neem oil to disrupt aphid feeding and reproduction",
-                    7,
-                    listOf("Neem oil", "Spray bottle", "Mild soap (optional emulsifier)"),
-                    listOf(
-                        "Mix 2 tsp neem oil and 1 tsp mild soap in 1 quart water",
-                        "Apply thoroughly to all plant surfaces, especially new growth",
-                        "Apply in evening or early morning to prevent leaf burn",
-                        "Repeat weekly for at least 3 applications"
-                    )
-                ),
-                TreatmentTask(
-                    "Monitor and Reapply",
-                    "Check plants for aphid population reduction and reapply treatments if necessary",
-                    3,
-                    listOf("Magnifying glass (optional)"),
-                    listOf(
-                        "Inspect new growth and leaf undersides for aphids",
-                        "Check for honeydew (sticky residue) or sooty mold",
-                        "Look for beneficial insects that may be controlling aphids",
-                        "Reapply treatments if aphid populations persist"
-                    )
-                )
-            )
-        ),
-        "Cutworm (Infested)" to PlantCondition(
-            "Cutworm (Infested)",
-            "Soil-dwelling caterpillars that cut off plants at the soil line, primarily damaging young seedlings.",
-            listOf(
-                "Place protective collars around seedlings (toilet paper tubes work well)",
-                "Clear garden of debris where cutworms hide",
-                "Till soil 2-4 weeks before planting to expose cutworms",
-                "Plant after soil has warmed, as cutworms are more active in cool soils",
-                "Encourage natural predators like birds and beneficial insects"
-            ),
-            listOf(
-                "Hand-pick cutworms at night when they're active",
-                "Apply diatomaceous earth around plant stems",
-                "Use Bacillus thuringiensis (Bt) for severe infestations",
-                "Create barriers with cardboard collars or aluminum foil",
-                "Apply beneficial nematodes to soil to target larvae"
+                "Continue regular maintenance",
+                "Monitor for early signs of pests or disease",
+                "Harvest pods when 2-4 inches long for best texture",
+                "Keep the area around plants weed-free",
+                "Prune any yellow or diseased leaves"
             ),
             listOf(
                 TreatmentTask(
-                    "Night Inspection",
-                    "Inspect plants after dark to locate and remove cutworms",
-                    1,
-                    listOf("Flashlight", "Container with soapy water"),
-                    listOf(
-                        "Search soil around damaged plants after sunset",
-                        "Look for C-shaped grayish-brown caterpillars",
-                        "Check 1-2 inches below soil surface near plant stems",
-                        "Drop collected cutworms in soapy water to eliminate them"
-                    )
-                ),
-                TreatmentTask(
-                    "Install Protective Collars",
-                    "Create physical barriers around plant stems",
-                    1,
-                    listOf("Cardboard tubes, aluminum foil, or plastic cups"),
-                    listOf(
-                        "Cut cardboard tubes into 3-inch sections",
-                        "Push collar 1 inch into soil around each plant stem",
-                        "Extend collar 2 inches above soil surface",
-                        "Ensure no gaps between collar and soil"
-                    )
-                ),
-                TreatmentTask(
-                    "Apply Diatomaceous Earth",
-                    "Create a protective barrier of diatomaceous earth",
-                    5,
-                    listOf("Food-grade diatomaceous earth", "Duster or shaker container"),
-                    listOf(
-                        "Apply a 2-inch wide ring around each plant",
-                        "Keep material dry - reapply after rain or irrigation",
-                        "Avoid breathing dust; wear a mask when applying",
-                        "Apply in evening when cutworms become active"
-                    )
-                ),
-                TreatmentTask(
-                    "Bt Treatment",
-                    "Apply Bacillus thuringiensis for severe infestations",
-                    7,
-                    listOf("Bt concentrate", "Sprayer", "Protective gear"),
-                    listOf(
-                        "Mix Bt according to label directions",
-                        "Apply to soil around plant stems",
-                        "Apply in evening hours when cutworms feed",
-                        "Water lightly after application to activate Bt",
-                        "Reapply after heavy rain"
-                    )
-                )
-            )
-        ),
-        "Fruit Fly (Infested)" to PlantCondition(
-            "Fruit Fly (Infested)",
-            "Small flies that lay eggs in ripening fruits, causing decay and premature fruit drop.",
-            listOf(
-                "Harvest fruits as soon as they ripen",
-                "Remove and dispose of fallen or damaged fruits",
-                "Cover developing fruits with paper bags or fruit sleeves",
-                "Use yellow sticky traps to monitor populations",
-                "Maintain good garden sanitation by removing debris"
-            ),
-            listOf(
-                "Create fruit fly traps with apple cider vinegar or wine",
-                "Apply organic spinosad sprays to affected plants",
-                "Use floating row covers to protect plants",
-                "Apply kaolin clay to create protective barrier on fruits",
-                "Introduce parasitic wasps as biological control"
-            ),
-            listOf(
-                TreatmentTask(
-                    "Remove Infested Fruits",
-                    "Remove all damaged or fallen fruits to break reproductive cycle",
-                    1,
-                    listOf("Garden gloves", "Sealed disposal bags"),
-                    listOf(
-                        "Inspect plants for fruits with tiny puncture marks",
-                        "Check for fruits with soft spots indicating larval feeding",
-                        "Remove all damaged, overripe, or fallen fruits",
-                        "Dispose in sealed bags or bury deeply (12+ inches)"
-                    )
-                ),
-                TreatmentTask(
-                    "Set Up Traps",
-                    "Create traps to capture adult fruit flies",
+                    "Regular Watering",
+                    "Maintain consistent watering schedule",
                     2,
-                    listOf("Plastic containers", "Apple cider vinegar", "Dish soap", "Plastic wrap"),
+                    listOf("Watering can or drip irrigation"),
                     listOf(
-                        "Fill containers with 1-inch apple cider vinegar",
-                        "Add 2-3 drops of dish soap to break surface tension",
-                        "Cover with plastic wrap and poke small holes",
-                        "Place traps near affected plants but not touching foliage",
-                        "Empty and refresh every 3-4 days"
+                        "Water deeply at the base of plants",
+                        "Provide 1-1.5 inches of water weekly",
+                        "Water more frequently during hot, dry periods",
+                        "Water in morning to reduce disease risk"
                     )
                 ),
                 TreatmentTask(
-                    "Apply Spinosad",
-                    "Treat plants with organic spinosad spray",
-                    7,
-                    listOf("Spinosad concentrate", "Sprayer", "Protective gear"),
+                    "Fertilize",
+                    "Apply balanced fertilizer to maintain productivity",
+                    21,
+                    listOf("Balanced organic fertilizer", "Compost"),
                     listOf(
-                        "Mix spinosad according to package directions",
-                        "Apply to fruit and foliage, focusing on developing fruits",
-                        "Apply in evening to minimize impact on beneficial insects",
-                        "Avoid spraying open flowers to protect pollinators",
-                        "Reapply after rain or every 7-10 days during peak season"
+                        "Apply fertilizer every 3-4 weeks during growing season",
+                        "Side-dress with compost or aged manure",
+                        "Avoid excessive nitrogen which promotes foliage over pods",
+                        "Water thoroughly after application"
                     )
                 ),
                 TreatmentTask(
-                    "Protective Covers",
-                    "Use physical barriers to protect developing fruits",
-                    3,
-                    listOf("Paper bags", "Garden ties", "Row cover material"),
+                    "Regular Harvesting",
+                    "Harvest pods frequently to encourage continued production",
+                    2,
+                    listOf("Garden gloves", "Pruning shears or scissors"),
                     listOf(
-                        "Cover individual fruits with paper bags when 2-3 inches developed",
-                        "Secure bags with garden ties or staples",
-                        "For smaller plants, use fine mesh row covers",
-                        "Ensure covers don't damage plants in wind or rain",
-                        "Remove bags just before harvest to allow final ripening"
-                    )
-                )
-            )
-        ),
-        "Hippodamia Variegata/Lady Bug" to PlantCondition(
-            "Hippodamia Variegata/Lady Bug",
-            "Beneficial ladybug species that feeds on aphids and other soft-bodied pests. These are beneficial insects that help control pest populations.",
-            listOf(
-                "Avoid broad-spectrum insecticides that harm beneficial insects",
-                "Plant diverse flowering plants to provide nectar and pollen",
-                "Create overwintering sites with leaf litter or insect houses",
-                "Maintain areas with aphids or other prey to sustain populations",
-                "Introduce purchased ladybugs in evening hours with water spray"
-            ),
-            listOf(
-                "No treatment needed - these are beneficial insects",
-                "Protect existing populations by avoiding chemical insecticides",
-                "Provide water sources during dry periods",
-                "Create habitat with diverse plantings and shelter areas",
-                "Document populations to track garden ecosystem health"
-            ),
-            listOf(
-                TreatmentTask(
-                    "Preserve Populations",
-                    "Protect and encourage beneficial ladybug populations",
-                    7,
-                    listOf("Garden journal", "Water mister"),
-                    listOf(
-                        "Avoid all insecticide use in areas with ladybugs",
-                        "Provide shallow water sources with landing platforms",
-                        "Document ladybug populations to track effectiveness",
-                        "Photograph larvae to distinguish from pest species"
+                        "Check plants every 1-2 days for harvestable pods",
+                        "Harvest pods when 2-4 inches long",
+                        "Cut rather than pull pods to avoid damaging plants",
+                        "Remove any overripe pods to encourage new growth"
                     )
                 ),
                 TreatmentTask(
-                    "Create Habitat",
-                    "Enhance garden to support ladybug lifecycle",
-                    14,
-                    listOf("Native plant seeds", "Mulch", "Ladybug house (optional)"),
-                    listOf(
-                        "Plant diverse flowering plants like dill, fennel, and yarrow",
-                        "Create overwintering sites with rock piles or ladybug houses",
-                        "Leave some areas of garden unmulched for ground-dwelling species",
-                        "Maintain small patches of aphids as food source"
-                    )
-                ),
-                TreatmentTask(
-                    "Monitor Effectiveness",
-                    "Evaluate pest control provided by ladybug population",
-                    7,
-                    listOf("Magnifying glass", "Garden journal"),
-                    listOf(
-                        "Check plants for aphid populations",
-                        "Observe and document ladybug feeding behavior",
-                        "Count ladybug eggs, larvae, and adults to assess population",
-                        "Compare pest damage in areas with and without ladybugs"
-                    )
-                ),
-                TreatmentTask(
-                    "Supplemental Release",
-                    "Add purchased ladybugs if natural population insufficient",
-                    30,
-                    listOf("Purchased ladybugs", "Spray bottle", "Organic honey solution"),
-                    listOf(
-                        "Release ladybugs in evening hours to reduce dispersal",
-                        "Mist plants lightly before release",
-                        "Place ladybugs at base of infested plants",
-                        "Provide honey-water solution (1:10) on cotton balls as food source",
-                        "Create temporary mesh cover for 24-48 hours if possible"
-                    )
-                )
-            )
-        ),
-        "Melon Thrips (Diseased)" to PlantCondition(
-            "Melon Thrips (Diseased)",
-            "Tiny insects that suck plant sap, causing silvering, scarring, and distortion of leaves.",
-            listOf(
-                "Use reflective mulch to deter thrips",
-                "Use blue or yellow sticky traps",
-                "Avoid planting near onions or garlic",
-                "Use floating row covers",
-                "Plant trap crops like basil or marigold"
-            ),
-            listOf(
-                "Apply insecticidal soap or neem oil",
-                "Use spinosad-based insecticides",
-                "Release predatory mites",
-                "Remove and destroy heavily infested plants",
-                "Apply diatomaceous earth around plant base"
-            ),
-            listOf(
-                TreatmentTask(
-                    "Apply Insecticidal Soap",
-                    "Treat plants with insecticidal soap to control thrips",
-                    3,
-                    listOf("Insecticidal soap", "Sprayer"),
-                    listOf(
-                        "Mix soap solution according to label directions",
-                        "Apply thoroughly to all plant surfaces, especially undersides of leaves",
-                        "Apply in early morning or evening, avoiding hot sun",
-                        "Ensure complete coverage for contact killing",
-                        "Repeat every 5-7 days for at least 3 applications"
-                    )
-                ),
-                TreatmentTask(
-                    "Apply Neem Oil",
-                    "Use neem oil as an organic control method",
-                    7,
-                    listOf("Neem oil", "Sprayer"),
-                    listOf(
-                        "Mix neem oil according to package directions",
-                        "Apply to all plant surfaces, especially leaf undersides",
-                        "Apply in early morning or evening, avoiding hot sun",
-                        "Repeat weekly for at least 3 applications",
-                        "Avoid applying when beneficial insects are active"
-                    )
-                ),
-                TreatmentTask(
-                    "Set Up Sticky Traps",
-                    "Use sticky traps to monitor and reduce thrips population",
+                    "Preventative Maintenance",
+                    "Monitor for early signs of pests or disease",
                     5,
-                    listOf("Blue or yellow sticky traps", "Wooden stakes"),
+                    listOf("Magnifying glass (optional)", "Neem oil", "Garden journal"),
                     listOf(
-                        "Place sticky traps at plant height around affected plants",
-                        "Use blue traps (most effective for thrips) or yellow traps",
-                        "Space traps every 3-5 feet around garden area",
-                        "Check traps regularly to monitor population",
-                        "Replace traps when surface becomes covered with insects"
+                        "Inspect plants for insect damage or discoloration",
+                        "Check undersides of leaves for pests",
+                        "Apply neem oil preventatively if pests are common in your area",
+                        "Prune any yellow or diseased leaves"
+                    )
+                )
+            )
+        ),
+        "Healthy bitter gourd" to PlantCondition(
+            "Healthy Bitter Gourd",
+            "Your bitter gourd (bitter melon) plants are healthy! Here are some tips to maintain their vigor and productivity.",
+            listOf(
+                "Provide strong trellising or support for vines",
+                "Water consistently at soil level",
+                "Apply balanced fertilizer every 3-4 weeks",
+                "Ensure full sun exposure for best growth",
+                "Mulch to retain moisture and reduce weed competition"
+            ),
+            listOf(
+                "Continue regular maintenance",
+                "Monitor for pests like aphids and fruit flies",
+                "Harvest fruits when they're light green (before yellowing)",
+                "Prune to maintain airflow and manage plant size",
+                "Provide adequate spacing between plants"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Trellising and Support",
+                    "Maintain strong support system for climbing vines",
+                    7,
+                    listOf("Trellis materials", "Garden twine", "Soft plant ties"),
+                    listOf(
+                        "Check and reinforce existing trellis structure",
+                        "Guide new growth onto supports",
+                        "Secure vines gently with soft ties",
+                        "Ensure the weight of developing fruits is supported"
                     )
                 ),
                 TreatmentTask(
-                    "Apply Spinosad Treatment",
-                    "Use spinosad for more severe infestations",
-                    7,
-                    listOf("Spinosad-based insecticide", "Sprayer", "Protective gear"),
+                    "Regular Watering",
+                    "Maintain consistent moisture for optimal growth",
+                    2,
+                    listOf("Watering can or drip irrigation"),
                     listOf(
-                        "Mix spinosad product according to label instructions",
-                        "Apply thoroughly to all plant surfaces",
-                        "Apply in evening to minimize impact on beneficial insects",
-                        "Avoid applying near flowering plants when bees are active",
-                        "Repeat according to product instructions, typically every 7-10 days"
+                        "Water deeply at soil level, avoiding foliage",
+                        "Maintain even soil moisture without waterlogging",
+                        "Provide approximately 1-1.5 inches of water weekly",
+                        "Adjust frequency based on weather conditions"
+                    )
+                ),
+                TreatmentTask(
+                    "Fertilization",
+                    "Apply balanced fertilizer to support fruit production",
+                    21,
+                    listOf("Balanced fertilizer (10-10-10)", "Compost tea (optional)"),
+                    listOf(
+                        "Apply fertilizer according to package directions",
+                        "Side-dress plants with compost for slow-release nutrition",
+                        "Apply liquid fertilizer or compost tea every 3-4 weeks",
+                        "Reduce nitrogen when fruits begin developing"
+                    )
+                ),
+                TreatmentTask(
+                    "Pruning and Maintenance",
+                    "Prune to maintain plant health and productivity",
+                    10,
+                    listOf("Pruning shears", "Garden gloves", "Disinfectant"),
+                    listOf(
+                        "Remove any yellowed or diseased leaves",
+                        "Prune excessive lateral growth to improve air circulation",
+                        "Trim overgrown vines to manageable length",
+                        "Disinfect tools between plants to prevent disease spread"
+                    )
+                )
+            )
+        ),
+        "Healthy Chili Pepper" to PlantCondition(
+            "Healthy Chili Pepper",
+            "Your chili pepper plants are healthy! Here are some tips to maintain their vigor and productivity.",
+            listOf(
+                "Water deeply but allow soil to dry between waterings",
+                "Apply balanced fertilizer every 4-6 weeks",
+                "Provide full sun exposure",
+                "Mulch to retain moisture and suppress weeds",
+                "Support taller varieties with stakes"
+            ),
+            listOf(
+                "Continue regular maintenance",
+                "Monitor for common pests like aphids and spider mites",
+                "Harvest peppers regularly to encourage production",
+                "Prune to improve air circulation if plants become dense",
+                "Apply calcium to prevent blossom end rot"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Strategic Watering",
+                    "Maintain proper watering schedule for optimal growth",
+                    3,
+                    listOf("Watering can or drip irrigation"),
+                    listOf(
+                        "Water deeply at soil level, not on foliage",
+                        "Allow top inch of soil to dry between waterings",
+                        "Reduce watering frequency during fruit ripening for spicier peppers",
+                        "Maintain consistent moisture to prevent blossom drop"
+                    )
+                ),
+                TreatmentTask(
+                    "Fertilization",
+                    "Apply appropriate fertilizer for pepper production",
+                    28,
+                    listOf("Balanced fertilizer", "Calcium supplement"),
+                    listOf(
+                        "Apply balanced fertilizer (10-10-10) during vegetative growth",
+                        "Switch to lower nitrogen fertilizer when flowering begins",
+                        "Apply calcium supplement to prevent blossom end rot",
+                        "Water thoroughly after fertilizer application"
+                    )
+                ),
+                TreatmentTask(
+                    "Support and Pruning",
+                    "Provide structural support and selective pruning",
+                    14,
+                    listOf("Plant stakes", "Soft plant ties", "Pruning shears"),
+                    listOf(
+                        "Stake taller varieties to prevent breaking under fruit weight",
+                        "Remove lower leaves that touch the soil",
+                        "Prune interior branches selectively to improve air flow",
+                        "Thin excessive fruit clusters on smaller varieties"
+                    )
+                ),
+                TreatmentTask(
+                    "Pest Monitoring",
+                    "Regular inspection for early pest detection",
+                    5,
+                    listOf("Magnifying glass (optional)", "Organic insecticidal soap"),
+                    listOf(
+                        "Check undersides of leaves for aphids and spider mites",
+                        "Inspect growing tips for damage or distortion",
+                        "Look for speckling on leaves (sign of mite damage)",
+                        "Apply insecticidal soap at first sign of pests"
                     )
                 )
             )
