@@ -28,14 +28,15 @@
         android:layout_marginTop="16dp"
         android:text="Plant Name"
         android:textColor="#333333"
-        android:textSize="16sp" />
+        android:textSize="16sp"
+        android:textStyle="bold" />
 
     <EditText
         android:id="@+id/plantNameInput"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
-        android:hint="Enter plant name (e.g., Plant 1)"
+        android:hint="Plant name"
         android:inputType="text"
         android:maxLines="1"
         android:textSize="16sp" />
@@ -44,12 +45,14 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:visibility="gone"
         android:textColor="#333333"
         android:textSize="16sp" />
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"
+        android:visibility="gone"
         android:text="Watering Frequency (days)"
         android:textColor="#333333"
         android:textSize="16sp" />
@@ -58,6 +61,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="4dp"
+        android:visibility="gone"
         android:orientation="horizontal">
 
         <Button

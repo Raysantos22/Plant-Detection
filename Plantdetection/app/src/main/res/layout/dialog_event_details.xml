@@ -8,11 +8,27 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="16dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Plant"
+            android:textColor="@color/dark_gray"
+            android:textSize="14sp" />
 
+        <TextView
+            android:id="@+id/eventPlantText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:text="Tomato Plant"
+            android:textColor="@color/black"
+            android:textSize="16sp" />
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Event Type"
+            android:layout_marginTop="16dp"
             android:textColor="@color/dark_gray"
             android:textSize="14sp" />
         <TextView
@@ -63,22 +79,7 @@
             android:textColor="@color/black"
             android:textSize="16sp" />
 
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="Plant"
-            android:textColor="@color/dark_gray"
-            android:textSize="14sp" />
 
-        <TextView
-            android:id="@+id/eventPlantText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
-            android:text="Tomato Plant"
-            android:textColor="@color/black"
-            android:textSize="16sp" />
 
         <TextView
             android:layout_width="wrap_content"

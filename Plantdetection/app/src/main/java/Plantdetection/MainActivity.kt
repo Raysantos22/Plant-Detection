@@ -832,6 +832,188 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     }
 
     // 5. Create a modified dialog to show info for multiple plant detections
+//    private fun showMultiplePlantInfoDialog(
+//        detectionsByCondition: Map<String, List<BoundingBox>>,
+//        showMonitoringOptions: Boolean = false,
+//        isRescan: Boolean = false
+//    ) {
+//        // Stop camera before showing dialog
+//        stopCamera()
+//
+//        // Get primary condition for the main display
+//        val conditions = detectionsByCondition.keys.toList()
+//        val primaryCondition = getPrimaryCondition(conditions)
+//        val condition = PlantConditionData.conditions[primaryCondition] ?: return
+//
+//        // Create dialog with custom layout
+//        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_plant_info, null)
+//
+//        // Set primary condition details
+//        val conditionTitle = dialogView.findViewById<TextView>(R.id.conditionTitle)
+//        val conditionDescription = dialogView.findViewById<TextView>(R.id.conditionDescription)
+//        val preventionTipsContainer = dialogView.findViewById<LinearLayout>(R.id.preventionTipsContainer)
+//        val treatmentTipsContainer = dialogView.findViewById<LinearLayout>(R.id.treatmentTipsContainer)
+//        val closeButton = dialogView.findViewById<View>(R.id.closeButton)
+//        val monitoringSection = dialogView.findViewById<View>(R.id.monitoringSection)
+//        val setReminderButton = dialogView.findViewById<android.widget.Button>(R.id.setReminderButton)
+//        val taskCompleteButton = dialogView.findViewById<android.widget.Button>(R.id.taskCompleteButton)
+//        val addToCalendarButton = dialogView.findViewById<android.widget.Button>(R.id.addToCalendarButton)
+//        val goToManagementButton = dialogView.findViewById<android.widget.Button>(R.id.goToManagementButton)
+//
+//        // Custom title to show multiple plants and conditions were detected
+//        val totalPlants = detectionsByCondition.values.sumOf { it.size }
+//        val totalConditions = detectionsByCondition.size
+////        conditionTitle.text = "$totalPlants plants detected: $totalConditions conditions"
+//
+//        // Create a more detailed description showing plant counts
+//        val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
+//            "• $condition: ${detections.size} plants"
+//        }
+////        conditionDescription.text = "Plant conditions detected:\n$conditionCounts"
+//        conditionDescription.text = "Plants detected:\n$conditionCounts"
+//
+//
+//        // Create a custom card for showing all detected plant conditions
+//        //test
+////        val addDetailsText = TextView(this)
+////        addDetailsText.text = "Multiple plants detected in this scan:"
+////        addDetailsText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
+////        addDetailsText.textSize = 16f
+////        addDetailsText.setTypeface(null, Typeface.BOLD)
+////        addDetailsText.setPadding(0, 24, 0, 8)
+////        preventionTipsContainer.addView(addDetailsText)
+//
+//        // Add a summary of each detected condition with plant counts
+////        for ((condName, detections) in detectionsByCondition) {
+////            val countText = TextView(this)
+////            countText.text = "• $condName: ${detections.size} plants"
+////            countText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
+////            countText.textSize = 14f
+////            countText.setPadding(16, 4, 0, 4)
+////            preventionTipsContainer.addView(countText)
+////        }
+//
+//        // Add treatment tips section - first add a header
+////        treatmentTipsContainer.removeAllViews()
+//
+//        // For each condition, add its information
+//        for ((condName, detections) in detectionsByCondition) {
+//            val conditionData = PlantConditionData.conditions[condName]
+//            if (conditionData != null) {
+//                // Add condition header
+//                val headerText = TextView(this)
+////                headerText.text = "$condName (${detections.size} plants)"
+//                headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
+//                headerText.textSize = 16f
+//                headerText.setTypeface(null, Typeface.BOLD)
+////                headerText.setPadding(0, 24, 0, 8)
+//                treatmentTipsContainer.addView(headerText)
+//
+//                // Add treatment tips for this condition
+//                conditionData.treatmentTips.take(2).forEach { tip -> // Limit to 2 tips to save space
+//                    val tipView = LayoutInflater.from(this).inflate(R.layout.item_treatment_tip, treatmentTipsContainer, false)
+//                    tipView.findViewById<TextView>(R.id.tipText).text = tip
+//                    treatmentTipsContainer.addView(tipView)
+//                }
+//            }
+//        }
+//
+//        // Configure the monitoring section based on scan type (same as your original code)
+//        if (isRescan && selectedPlantId != null) {
+//            // This is a rescan of an existing plant - show Go to Management button
+//            monitoringSection.visibility = View.VISIBLE
+//
+//            // Hide the regular buttons
+//            setReminderButton.visibility = View.GONE
+//            taskCompleteButton.visibility = View.GONE
+//            addToCalendarButton.visibility = View.GONE
+//
+//            // Show the go to management button
+//            goToManagementButton.visibility = View.VISIBLE
+//
+//            // Set go to management button listener
+//            goToManagementButton.setOnClickListener {
+//                val intent = Intent(this, PlantManagementActivity::class.java)
+//                intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
+//                intent.putExtra("SHOW_TREATMENT_PLAN", true) // Important: This ensures treatment plan is shown
+//                startActivity(intent)
+//                finish() // Close this activity
+//            }
+//        } else if (showMonitoringOptions && selectedPlantId != null) {
+//            // Regular scan for an existing plant
+//            monitoringSection.visibility = View.VISIBLE
+//            goToManagementButton.visibility = View.GONE
+//            setReminderButton.visibility = View.VISIBLE
+//            taskCompleteButton.visibility = View.VISIBLE
+//            addToCalendarButton.visibility = View.GONE
+//
+//            // Set reminder button
+//            setReminderButton.setOnClickListener {
+//                dialogShowDateTimePicker(primaryCondition)
+//            }
+//
+//            // Task complete button
+//            taskCompleteButton.setOnClickListener {
+//                markTreatmentComplete(primaryCondition)
+//                Toast.makeText(this, "Task marked as complete", Toast.LENGTH_SHORT).show()
+//                infoDialog?.dismiss()
+//
+//                // If this was a disease/pest condition, ask if it's resolved
+//                if (!primaryCondition.startsWith("Healthy")) {
+//                    showResolutionConfirmationDialog()
+//                }
+//            }
+//        } else if (showMonitoringOptions) {
+//            // This is a one-time scan, show option to add to my plants
+//            monitoringSection.visibility = View.VISIBLE
+//            setReminderButton.visibility = View.GONE
+//            taskCompleteButton.visibility = View.GONE
+//            goToManagementButton.visibility = View.GONE
+//            addToCalendarButton.visibility = View.VISIBLE
+//
+//            // Add to calendar button - now shows dialog for multiple plants
+//            addToCalendarButton.setOnClickListener {
+//                showAddMultiplePlantsDialog(detectionsByCondition)
+//            }
+//        } else {
+//            monitoringSection.visibility = View.GONE
+//        }
+//
+//        // Set up close button
+//        closeButton.setOnClickListener {
+//            infoDialog?.dismiss()
+//
+//            // If we came from the Plant Management screen and this was a rescan, go back there
+//            if (selectedPlantId != null && isRescan) {
+//                val intent = Intent(this, PlantManagementActivity::class.java)
+//                intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
+//                intent.putExtra("SHOW_TREATMENT_PLAN", true) // Important: Force show treatment plan
+//                startActivity(intent)
+//                finish()
+//            } else {
+//                // Restart camera if we're not navigating away
+//                if (!isFinishing) {
+//                    startCamera()
+//                }
+//            }
+//        }
+//
+//        // Create and show the dialog
+//        infoDialog = AlertDialog.Builder(this)
+//            .setView(dialogView)
+//            .setCancelable(true)
+//            .create()
+//
+//        // Handle dialog dismissal to restart camera if needed
+//        infoDialog?.setOnDismissListener {
+//            if (!isFinishing) {
+//                startCamera()
+//            }
+//        }
+//
+//        infoDialog?.show()
+//    }
+
     private fun showMultiplePlantInfoDialog(
         detectionsByCondition: Map<String, List<BoundingBox>>,
         showMonitoringOptions: Boolean = false,
@@ -863,59 +1045,114 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         // Custom title to show multiple plants and conditions were detected
         val totalPlants = detectionsByCondition.values.sumOf { it.size }
         val totalConditions = detectionsByCondition.size
-        conditionTitle.text = "$totalPlants plants detected: $totalConditions conditions"
 
-        // Create a more detailed description showing plant counts
-        val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
-            "• $condition: ${detections.size} plants"
+        // Set description text based on number of plants detected
+        if (totalConditions == 1 && detectionsByCondition[primaryCondition]?.size == 1) {
+            // Single plant with single condition
+            conditionDescription.text = primaryCondition
+            conditionDescription.textSize = 20f  // Larger text for single condition
+        } else {
+            // Multiple plants or conditions
+            val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
+                "• $condition: ${detections.size} plants"
+            }
+            conditionDescription.text = "Plants detected:\n$conditionCounts"
         }
-        conditionDescription.text = "Plant conditions detected:\n$conditionCounts"
 
-        // Create a custom card for showing all detected plant conditions
-        val addDetailsText = TextView(this)
-        addDetailsText.text = "Multiple plants detected in this scan:"
-        addDetailsText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
-        addDetailsText.textSize = 16f
-        addDetailsText.setTypeface(null, Typeface.BOLD)
-        addDetailsText.setPadding(0, 24, 0, 8)
-        preventionTipsContainer.addView(addDetailsText)
+        // ------------------- PREVENTION TIPS SECTION -------------------
+        // Clear any existing views
+        preventionTipsContainer.removeAllViews()
 
-        // Add a summary of each detected condition with plant counts
+        // Check if we have any prevention tips to display across all conditions
+        var hasPrevention = false
+        val isSingleCondition = totalConditions == 1
+
+        // For each condition, check if it has any prevention tips
         for ((condName, detections) in detectionsByCondition) {
-            val countText = TextView(this)
-            countText.text = "• $condName: ${detections.size} plants"
-            countText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
-            countText.textSize = 14f
-            countText.setPadding(16, 4, 0, 4)
-            preventionTipsContainer.addView(countText)
+            val conditionData = PlantConditionData.conditions[condName]
+            if (conditionData != null && conditionData.preventionTips.isNotEmpty()) {
+                hasPrevention = true
+
+                // Only add condition header if multiple conditions exist
+                if (!isSingleCondition) {
+                    val headerText = TextView(this)
+                    headerText.text = condName
+                    headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
+                    headerText.textSize = 16f
+                    headerText.setTypeface(null, Typeface.BOLD)
+                    headerText.setPadding(0, 8, 0, 8)
+                    preventionTipsContainer.addView(headerText)
+                }
+
+                // Add prevention tips for this condition - limit to 2
+                conditionData.preventionTips.take(2).forEach { tip ->
+                    val tipView = LayoutInflater.from(this).inflate(R.layout.item_treatment_tip, preventionTipsContainer, false)
+                    tipView.findViewById<TextView>(R.id.tipText).text = tip
+                    preventionTipsContainer.addView(tipView)
+                }
+            }
         }
 
-        // Add treatment tips section - first add a header
+        // If no prevention tips were found, display N/A
+        if (!hasPrevention) {
+            val naText = TextView(this)
+            naText.text = "N/A"
+            naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
+            naText.textSize = 14f
+            naText.setPadding(0, 8, 0, 8)
+            preventionTipsContainer.addView(naText)
+        }
+
+        // ------------------- TREATMENT TIPS SECTION -------------------
+        // Clear existing views
         treatmentTipsContainer.removeAllViews()
 
         // For each condition, add its information
         for ((condName, detections) in detectionsByCondition) {
             val conditionData = PlantConditionData.conditions[condName]
             if (conditionData != null) {
-                // Add condition header
-                val headerText = TextView(this)
-                headerText.text = "$condName (${detections.size} plants)"
-                headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
-                headerText.textSize = 16f
-                headerText.setTypeface(null, Typeface.BOLD)
-                headerText.setPadding(0, 24, 0, 8)
-                treatmentTipsContainer.addView(headerText)
+                // Only add condition header if multiple conditions exist
+                if (!isSingleCondition) {
+                    val headerText = TextView(this)
+                    headerText.text = condName
+                    headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
+                    headerText.textSize = 16f
+                    headerText.setTypeface(null, Typeface.BOLD)
+                    headerText.setPadding(0, 8, 0, 8)
+                    treatmentTipsContainer.addView(headerText)
+                }
 
                 // Add treatment tips for this condition
-                conditionData.treatmentTips.take(2).forEach { tip -> // Limit to 2 tips to save space
-                    val tipView = LayoutInflater.from(this).inflate(R.layout.item_treatment_tip, treatmentTipsContainer, false)
-                    tipView.findViewById<TextView>(R.id.tipText).text = tip
-                    treatmentTipsContainer.addView(tipView)
+                if (conditionData.treatmentTips.isNotEmpty()) {
+                    conditionData.treatmentTips.take(2).forEach { tip ->
+                        val tipView = LayoutInflater.from(this).inflate(R.layout.item_treatment_tip, treatmentTipsContainer, false)
+                        tipView.findViewById<TextView>(R.id.tipText).text = tip
+                        treatmentTipsContainer.addView(tipView)
+                    }
+                } else {
+                    // If no treatment tips, add N/A
+                    val naText = TextView(this)
+                    naText.text = "N/A"
+                    naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
+                    naText.textSize = 14f
+                    naText.setPadding(16, 4, 0, 4)
+                    treatmentTipsContainer.addView(naText)
                 }
             }
         }
 
-        // Configure the monitoring section based on scan type (same as your original code)
+        // If no conditions had treatment tips, add a general N/A
+        if (treatmentTipsContainer.childCount == 0) {
+            val naText = TextView(this)
+            naText.text = "N/A"
+            naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
+            naText.textSize = 14f
+            naText.setPadding(0, 8, 0, 8)
+            treatmentTipsContainer.addView(naText)
+        }
+
+        // ------------------- MONITORING SECTION -------------------
+        // Configure the monitoring section based on scan type
         if (isRescan && selectedPlantId != null) {
             // This is a rescan of an existing plant - show Go to Management button
             monitoringSection.visibility = View.VISIBLE
@@ -1010,11 +1247,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         infoDialog?.show()
     }
-
-
     // 6. Add dialog for creating a new plant group from multiple detections
     private fun showAddMultiplePlantsDialog(detectionsByCondition: Map<String, List<BoundingBox>>) {
         // Stop camera and scanning to prevent resource issues
+        stopCamera()
         if (isScanning) {
             toggleScanning()
         }
@@ -1024,9 +1260,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         val loadingDialog = ProgressDialog(this).apply {
             setMessage("Preparing...")
             setCancelable(false)
+            stopCamera()
         }
         loadingDialog.show()
-
+        stopCamera()
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_add_to_calendar, null)
 
         // Initialize views
@@ -2252,10 +2489,12 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         infoDialog?.show()
     }
     private fun showAddToCalendarDialog(conditionName: String) {
+        stopCamera()
         try {
             // Stop camera and scanning to prevent resource issues
             if (isScanning) {
                 toggleScanning()
+                stopCamera()
             }
             stopCamera() // Stop camera to free resources
 
@@ -2263,6 +2502,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             val loadingDialog = ProgressDialog(this).apply {
                 setMessage("Preparing...")
                 setCancelable(false)
+                stopCamera()
             }
             loadingDialog.show()
 
@@ -2271,6 +2511,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 Toast.makeText(this, "Invalid condition", Toast.LENGTH_SHORT).show()
                 loadingDialog.dismiss()
                 return
+                stopCamera()
             }
 
             // Safely inflate dialog view
