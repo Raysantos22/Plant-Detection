@@ -9,7 +9,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import com.PlantDetection.databinding.ActivityVegetableSelectionBinding
 import com.PlantDetection.LoadingActivity
-import com.Plantdetection.DetectableConditionsActivity
+import com.PlantDetection.DetectableConditionsActivity
 
 /**
  * Activity for vegetable selection with option to go to Plant Management screen
@@ -94,8 +94,24 @@ class VegetableSelectionActivity : AppCompatActivity() {
     private fun updateDetectableConditionsInfo(vegetable: String) {
         // Update text in the detection info section based on selected vegetable
         val detectableConditions = when (vegetable) {
-            "Tomato" -> listOf("Healthy Tomato", "Anthracnose", "Blossom End Rot", "Leaf Caterpillar", "Leaf Roller", "Hippodamia Variegata", "Rice Water Weevil")
-            "Eggplant" -> listOf("Healthy Eggplant", "Collectotrichum rot", "Melon thrips", "Leaf Caterpillar", "Leaf Roller", "Hippodamia Variegata", "Rice Water Weevil")
+            "Tomato" -> listOf(
+                "Healthy Tomato",
+                "Anthracnose (Diseased)",
+                "Blossom End Rot (Diseased)",
+                "Aphids (Infested)",
+                "Cutworm (Infested)",
+                "Fruit Fly (Infested)",
+                "Hippodamia Variegata/Lady Bug"
+            )
+            "Eggplant" -> listOf(
+                "Healthy eggplant",
+                "Collectotrichum rot (Diseased)",
+                "Melon Thrips (Diseased)",
+                "Aphids (Infested)",
+                "Cutworm (Infested)",
+                "Fruit Fly (Infested)",
+                "Hippodamia Variegata/Lady Bug"
+            )
             else -> emptyList()
         }
 

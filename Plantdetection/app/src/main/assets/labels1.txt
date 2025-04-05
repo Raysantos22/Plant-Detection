@@ -1,10 +1,10 @@
-Anthracnose
-Blossom End Rot
-Collectotrichum rot
+Anthracnose (Diseased)
+Aphids (Infested)
+Blossom End Rot (Diseased)
+Collectotrichum rot (Diseased)
+Cutworm (Infested)
+Fruit Fly (Infested)
 Healthy Tomato
-Healthy Eggplant
-Hippodamia Variegata
-Leaf Caterpillar
-Leaf Roller
-Melon thrips
-Rice Water Weevil
+Healthy eggplant
+Hippodamia Variegata/Lady Bug
+Melon Thrips (Diseased)

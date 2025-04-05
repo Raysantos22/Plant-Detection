@@ -12,11 +12,13 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Surface
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
@@ -180,22 +182,31 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 //            Toast.makeText(this, "No valid detection to capture", Toast.LENGTH_SHORT).show()
 //        }
 //    }
+//    private fun isSameVegetableType(cls1: String, cls2: String): Boolean {
+//        // Consider all tomato variants as "Tomato" and all eggplant variants as "Eggplant"
+//        val type1 = when {
+//            cls1.contains("Tomato", ignoreCase = true) -> "Tomato"
+//            cls1.contains("Eggplant", ignoreCase = true) -> "Eggplant"
+//            else -> cls1
+//        }
+//
+//        val type2 = when {
+//            cls2.contains("Tomato", ignoreCase = true) -> "Tomato"
+//            cls2.contains("Eggplant", ignoreCase = true) -> "Eggplant"
+//            else -> cls2
+//        }
+//
+//        return type1 == type2
+//    }
     private fun isSameVegetableType(cls1: String, cls2: String): Boolean {
-        // Consider all tomato variants as "Tomato" and all eggplant variants as "Eggplant"
-        val type1 = when {
-            cls1.contains("Tomato", ignoreCase = true) -> "Tomato"
-            cls1.contains("Eggplant", ignoreCase = true) -> "Eggplant"
-            else -> cls1
-        }
+        // Get plant type for each condition
+        val type1 = getPlantTypeFromCondition(cls1)
+        val type2 = getPlantTypeFromCondition(cls2)
 
-        val type2 = when {
-            cls2.contains("Tomato", ignoreCase = true) -> "Tomato"
-            cls2.contains("Eggplant", ignoreCase = true) -> "Eggplant"
-            else -> cls2
-        }
-
-        return type1 == type2
+        // If either is Unknown, we should be more lenient with matching
+        return type1 == type2 || type1 == "Unknown" || type2 == "Unknown"
     }
+
 
     // 2. Modify captureDetection method to handle multiple plants
     private fun captureDetection() {
@@ -204,27 +215,35 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             // Group detections by condition
             val detectionsByCondition = currentDetections.groupBy { it.clsName }
 
-            // Categorize detections as diseases/pests for each plant type
+            // Categorize detections by type (healthy, diseased, infested)
             val tomatoConditions = mutableListOf<String>()
             val eggplantConditions = mutableListOf<String>()
             val generalPests = mutableListOf<String>()
+            val beneficialInsects = mutableListOf<String>()
 
             // Organize detections by plant type and condition
             for (condition in detectionsByCondition.keys) {
                 when (condition) {
-                    // Tomato specific diseases
-                    "Anthracnose", "Blossom End Rot" -> tomatoConditions.add(condition)
+                    // Tomato specific conditions
+                    "Anthracnose (Diseased)", "Blossom End Rot (Diseased)" -> tomatoConditions.add(
+                        condition
+                    )
 
-                    // Eggplant specific diseases
-                    "Collectotrichum rot", "Melon thrips" -> eggplantConditions.add(condition)
+                    // Eggplant specific conditions
+                    "Collectotrichum rot (Diseased)", "Melon Thrips (Diseased)" -> eggplantConditions.add(
+                        condition
+                    )
 
                     // General pests that affect both
-                    "Hippodamia Variegata", "Leaf Caterpillar", "Leaf Roller", "Rice Water Weevil" ->
+                    "Aphids (Infested)", "Cutworm (Infested)", "Fruit Fly (Infested)" ->
                         generalPests.add(condition)
+
+                    // Beneficial insects
+                    "Hippodamia Variegata/Lady Bug" -> beneficialInsects.add(condition)
 
                     // Healthy plants - handle specifically
                     "Healthy Tomato" -> tomatoConditions.add(condition)
-                    "Healthy Eggplant" -> eggplantConditions.add(condition)
+                    "Healthy eggplant" -> eggplantConditions.add(condition)
                 }
             }
 
@@ -238,14 +257,15 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
             // Determine if we have any conditions relevant to the detected plants
             val relevantConditions = when (selectedVegType) {
-                "Tomato" -> tomatoConditions + generalPests
-                "Eggplant" -> eggplantConditions + generalPests
-                else -> tomatoConditions + eggplantConditions + generalPests
+                "Tomato" -> tomatoConditions + generalPests + beneficialInsects
+                "Eggplant" -> eggplantConditions + generalPests + beneficialInsects
+                else -> tomatoConditions + eggplantConditions + generalPests + beneficialInsects
             }
 
             // Make sure we have a valid condition that can be treated
             if (relevantConditions.isNotEmpty() &&
-                relevantConditions.any { PlantConditionData.conditions.containsKey(it) }) {
+                relevantConditions.any { PlantConditionData.conditions.containsKey(it) }
+            ) {
 
                 // First stop scanning
                 if (isScanning) {
@@ -272,6 +292,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             Toast.makeText(this, "No valid detections to capture", Toast.LENGTH_SHORT).show()
         }
     }
+
     private fun showWrongVegetableDialog(selectedVegType: String) {
         // Stop scanning while showing the dialog
         if (isScanning) {
@@ -299,6 +320,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             .setCancelable(false)
             .show()
     }
+
     // 3. Add method to handle updating a plant with multiple conditions
     private fun updatePlantWithMultipleConditions(plantId: String, detectionsByCondition: Map<String, List<BoundingBox>>) {
         // Stop camera and scanning to prevent resource issues
@@ -323,23 +345,18 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     val wasHealthy = plant.currentCondition?.startsWith("Healthy") ?: true
 
                     // Categorize detected conditions
-                    val pestConditions = mutableListOf<String>()
                     val diseaseConditions = mutableListOf<String>()
+                    val pestConditions = mutableListOf<String>()
                     val healthyConditions = mutableListOf<String>()
+                    val beneficialConditions = mutableListOf<String>()
 
                     // Organize detections by condition type
                     for (condition in detectionsByCondition.keys) {
-                        when (condition) {
-                            // Pests
-                            "Hippodamia Variegata", "Leaf Caterpillar", "Leaf Roller", "Rice Water Weevil" ->
-                                pestConditions.add(condition)
-
-                            // Healthy plants
-                            "Healthy Tomato", "Healthy Eggplant" ->
-                                healthyConditions.add(condition)
-
-                            // Diseases (everything else)
-                            else -> diseaseConditions.add(condition)
+                        when {
+                            condition.contains("(Diseased)") -> diseaseConditions.add(condition)
+                            condition.contains("(Infested)") -> pestConditions.add(condition)
+                            condition == "Hippodamia Variegata/Lady Bug" -> beneficialConditions.add(condition)
+                            condition.startsWith("Healthy") -> healthyConditions.add(condition)
                         }
                     }
 
@@ -387,16 +404,13 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     }
 
                     // Set primary condition to the highest priority one
-                    // (pest or disease takes priority over healthy)
-                    val primaryCondition = if (pestConditions.isNotEmpty()) {
-                        // Pests take first priority
-                        pestConditions.first()
-                    } else if (diseaseConditions.isNotEmpty()) {
-                        // Diseases take second priority
-                        diseaseConditions.first()
-                    } else {
-                        // Healthy conditions have lowest priority
-                        healthyConditions.firstOrNull() ?: "Healthy"
+                    // (disease takes first priority, then pests, then beneficial)
+                    val primaryCondition = when {
+                        diseaseConditions.isNotEmpty() -> diseaseConditions.first()
+                        pestConditions.isNotEmpty() -> pestConditions.first()
+                        beneficialConditions.isNotEmpty() -> beneficialConditions.first()
+                        healthyConditions.isNotEmpty() -> healthyConditions.first()
+                        else -> "Healthy"
                     }
 
                     // Check if this is a new primary condition
@@ -495,19 +509,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                         val processedConditions = mutableSetOf<String>()
 
                         if (!isNowHealthy) {
-                            // Handle pest conditions first (higher priority)
-                            for (condition in pestConditions) {
-                                if (!processedConditions.contains(condition)) {
-                                    processedConditions.add(condition)
-                                    // Check for duplicates
-                                    checkForDuplicateTreatments(plantId, condition)
-                                    // Create treatment schedule for pest
-                                    createAutomaticTreatmentSchedule(plantId, condition)
-                                    Log.d("MainActivity", "Created pest treatment plan for: $condition")
-                                }
-                            }
-
-                            // Then handle disease conditions
+                            // Handle disease conditions first (higher priority)
                             for (condition in diseaseConditions) {
                                 if (!processedConditions.contains(condition)) {
                                     processedConditions.add(condition)
@@ -516,6 +518,18 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                                     // Create treatment schedule for disease
                                     createAutomaticTreatmentSchedule(plantId, condition)
                                     Log.d("MainActivity", "Created disease treatment plan for: $condition")
+                                }
+                            }
+
+                            // Then handle pest conditions
+                            for (condition in pestConditions) {
+                                if (!processedConditions.contains(condition)) {
+                                    processedConditions.add(condition)
+                                    // Check for duplicates
+                                    checkForDuplicateTreatments(plantId, condition)
+                                    // Create treatment schedule for pest
+                                    createAutomaticTreatmentSchedule(plantId, condition)
+                                    Log.d("MainActivity", "Created pest treatment plan for: $condition")
                                 }
                             }
                         }
@@ -594,18 +608,30 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
         }.start()
     }
+
     private fun getPlantTypeFromCondition(condition: String): String {
         return when (condition) {
-            // Tomato specific diseases
-            "Anthracnose", "Blossom End Rot", "Healthy Tomato" -> "Tomato"
+            // Tomato specific conditions
+            "Anthracnose (Diseased)", "Blossom End Rot (Diseased)", "Healthy Tomato" -> "Tomato"
 
-            // Eggplant specific diseases
-            "Collectotrichum rot", "Melon thrips", "Healthy Eggplant" -> "Eggplant"
+            // Eggplant specific conditions
+            "Collectotrichum rot (Diseased)", "Melon Thrips (Diseased)", "Healthy eggplant" -> "Eggplant"
 
             // General pests - determine from context or default
-            "Hippodamia Variegata", "Leaf Caterpillar", "Leaf Roller", "Rice Water Weevil" ->
-                selectedVegetable ?: "Unknown"
+            "Aphids (Infested)", "Cutworm (Infested)", "Fruit Fly (Infested)",
+            "Hippodamia Variegata/Lady Bug" -> selectedVegetable ?: "Unknown"
 
+            else -> "Unknown"
+        }
+    }
+
+    // Helper function to determine if condition is a disease, pest, or beneficial
+    private fun getCategoryFromCondition(condition: String): String {
+        return when {
+            condition.contains("(Diseased)") -> "Disease"
+            condition.contains("(Infested)") -> "Pest"
+            condition == "Hippodamia Variegata/Lady Bug" -> "Beneficial"
+            condition.startsWith("Healthy") -> "Healthy"
             else -> "Unknown"
         }
     }
@@ -790,12 +816,16 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
         }
     }
+
     private fun cancelExistingTreatmentTasks(plantId: String) {
         val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
 
         // Find incomplete treatment events
         val pendingTreatments = allEvents.filter {
-            (it.eventType.startsWith("Treat: ") || it.eventType.equals("Treatment", ignoreCase = true)) &&
+            (it.eventType.startsWith("Treat: ") || it.eventType.equals(
+                "Treatment",
+                ignoreCase = true
+            )) &&
                     !it.completed
         }
 
@@ -804,13 +834,17 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             plantDatabaseManager.deletePlantCareEvent(event.id)
         }
     }
+
     private fun markTreatmentsForConditionAsCompleted(plantId: String, conditionName: String) {
         val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
 
         // Find incomplete treatment events for this specific condition
         val pendingTreatments = allEvents.filter {
             (it.eventType.startsWith("Treat: $conditionName") ||
-                    (it.eventType.equals("Treatment", ignoreCase = true) && it.conditionName == conditionName)) &&
+                    (it.eventType.equals(
+                        "Treatment",
+                        ignoreCase = true
+                    ) && it.conditionName == conditionName)) &&
                     !it.completed
         }
 
@@ -820,17 +854,24 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             plantDatabaseManager.updatePlantCareEvent(updatedEvent)
         }
     }
+
     // 4. Helper to determine the primary condition from multiple detections
     private fun getPrimaryCondition(conditions: List<String>): String {
-        // Prioritize diseases over healthy conditions
-        val diseaseConditions = conditions.filter { !it.startsWith("Healthy") }
-        return if (diseaseConditions.isNotEmpty()) {
-            diseaseConditions.first()  // Use the first disease as primary
-        } else {
-            conditions.first()  // Use the first condition (healthy) if no diseases
+        // First categorize conditions
+        val diseaseConditions = conditions.filter { it.contains("(Diseased)") }
+        val pestConditions = conditions.filter { it.contains("(Infested)") }
+        val beneficialConditions = conditions.filter { it == "Hippodamia Variegata/Lady Bug" }
+        val healthyConditions = conditions.filter { it.startsWith("Healthy") }
+
+        // Prioritize in the order: Diseases > Pests > Beneficial Insects > Healthy
+        return when {
+            diseaseConditions.isNotEmpty() -> diseaseConditions.first()
+            pestConditions.isNotEmpty() -> pestConditions.first()
+            beneficialConditions.isNotEmpty() -> beneficialConditions.first()
+            healthyConditions.isNotEmpty() -> healthyConditions.first()
+            else -> conditions.first() // Fallback to the first condition if nothing else matches
         }
     }
-
     // 5. Create a modified dialog to show info for multiple plant detections
 //    private fun showMultiplePlantInfoDialog(
 //        detectionsByCondition: Map<String, List<BoundingBox>>,
@@ -1030,148 +1071,249 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         // Create dialog with custom layout
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_plant_info, null)
 
-        // Set primary condition details
+        // Get references to all UI elements
         val conditionDescription = dialogView.findViewById<TextView>(R.id.conditionDescription)
         val preventionTipsContainer = dialogView.findViewById<LinearLayout>(R.id.preventionTipsContainer)
         val treatmentTipsContainer = dialogView.findViewById<LinearLayout>(R.id.treatmentTipsContainer)
+        val maintenanceTipsContainer = dialogView.findViewById<LinearLayout>(R.id.maintenanceTipsContainer)
         val closeButton = dialogView.findViewById<View>(R.id.closeButton)
         val monitoringSection = dialogView.findViewById<View>(R.id.monitoringSection)
-        val setReminderButton = dialogView.findViewById<android.widget.Button>(R.id.setReminderButton)
-        val taskCompleteButton = dialogView.findViewById<android.widget.Button>(R.id.taskCompleteButton)
-        val addToCalendarButton = dialogView.findViewById<android.widget.Button>(R.id.addToCalendarButton)
-        val goToManagementButton = dialogView.findViewById<android.widget.Button>(R.id.goToManagementButton)
 
-        // Custom title to show multiple plants and conditions were detected
+        // Section headers and scrollviews
+        val preventionHeader = dialogView.findViewById<TextView>(R.id.preventionHeader)
+        val preventionScrollView = dialogView.findViewById<ScrollView>(R.id.preventionScrollView)
+        val treatmentHeader = dialogView.findViewById<TextView>(R.id.treatmentHeader)
+        val treatmentScrollView = dialogView.findViewById<ScrollView>(R.id.treatmentScrollView)
+        val maintenanceHeader = dialogView.findViewById<TextView>(R.id.maintenanceHeader)
+        val maintenanceScrollView = dialogView.findViewById<ScrollView>(R.id.maintenanceScrollView)
+        val divider1 = dialogView.findViewById<View>(R.id.divider1)
+        val divider2 = dialogView.findViewById<View>(R.id.divider2)
+        val dividerMaintenance = dialogView.findViewById<View>(R.id.dividerMaintenance)
+
+        // Monitoring buttons
+        val setReminderButton = dialogView.findViewById<Button>(R.id.setReminderButton)
+        val taskCompleteButton = dialogView.findViewById<Button>(R.id.taskCompleteButton)
+        val addToCalendarButton = dialogView.findViewById<Button>(R.id.addToCalendarButton)
+        val goToManagementButton = dialogView.findViewById<Button>(R.id.goToManagementButton)
+
+        // Check types of detected conditions
+        val onlyLadybugsDetected = detectionsByCondition.keys.all { it == "Hippodamia Variegata/Lady Bug" }
+        val hasBeneficialInsects = conditions.contains("Hippodamia Variegata/Lady Bug")
+        val hasHealthyCondition = detectionsByCondition.keys.any { it.startsWith("Healthy") }
+        val hasUnhealthyCondition = detectionsByCondition.keys.any {
+            !it.startsWith("Healthy") && it != "Hippodamia Variegata/Lady Bug"
+        }
+
+        // Total plants and conditions
         val totalPlants = detectionsByCondition.values.sumOf { it.size }
         val totalConditions = detectionsByCondition.size
 
-        // Set description text based on number of plants detected
+        // Set description text
         if (totalConditions == 1 && detectionsByCondition[primaryCondition]?.size == 1) {
             // Single plant with single condition
             conditionDescription.text = primaryCondition
-            conditionDescription.textSize = 16f
-           // Larger text for single condition
+            conditionDescription.textSize = 14f
         } else {
             // Multiple plants or conditions
             val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
-                "• $condition: ${detections.size} plants"
+                "• $condition: ${detections.size}"
             }
-            conditionDescription.text = "Plants detected:\n$conditionCounts"
+            conditionDescription.text = "Vegetable detected:\n$conditionCounts"
         }
 
-        // ------------------- PREVENTION TIPS SECTION -------------------
-        // Clear any existing views
-        preventionTipsContainer.removeAllViews()
+        // ------------------- MAINTENANCE SECTION -------------------
+        maintenanceTipsContainer.removeAllViews()
 
-        // Check if we have any prevention tips to display across all conditions
-        var hasPrevention = false
-        val isSingleCondition = totalConditions == 1
+        // Show maintenance section for ladybugs, healthy conditions, or both
+        if (hasBeneficialInsects || hasHealthyCondition) {
+            maintenanceHeader.visibility = View.VISIBLE
+            maintenanceScrollView.visibility = View.VISIBLE
+            dividerMaintenance.visibility = View.VISIBLE
 
-        // For each condition, check if it has any prevention tips
-        for ((condName, detections) in detectionsByCondition) {
-            val conditionData = PlantConditionData.conditions[condName]
-            if (conditionData != null && conditionData.preventionTips.isNotEmpty()) {
-                hasPrevention = true
+            var hasMaintenance = false
 
-                // Only add condition header if multiple conditions exist
-                if (!isSingleCondition) {
+            // Process healthy conditions and ladybugs
+            for ((condName, detections) in detectionsByCondition) {
+                if (!condName.startsWith("Healthy") && condName != "Hippodamia Variegata/Lady Bug") continue
+
+                val conditionData = PlantConditionData.conditions[condName]
+                if (conditionData != null) {
+                    hasMaintenance = true
+
+                    // Add condition header
                     val headerText = TextView(this)
                     headerText.text = condName
                     headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
-                    headerText.textSize = 12f
+                    headerText.textSize = 14f
                     headerText.setTypeface(null, Typeface.BOLD)
                     headerText.setPadding(0, 8, 0, 8)
-                    preventionTipsContainer.addView(headerText)
-                }
+                    maintenanceTipsContainer.addView(headerText)
 
-                // Add prevention tips for this condition - limit to 2
-                conditionData.preventionTips.take(2).forEach { tip ->
-                    val tipView = LayoutInflater.from(this).inflate(R.layout.item_treatment_tip, preventionTipsContainer, false)
-                    tipView.findViewById<TextView>(R.id.tipText).text = tip
-                    preventionTipsContainer.addView(tipView)
+                    // Use prevention tips for maintenance
+                    val maintenanceTips = when (condName) {
+                        "Hippodamia Variegata/Lady Bug" -> {
+                            // Specific handling for ladybugs
+                            listOf(
+                                "Avoid broad-spectrum insecticides that harm beneficial insects",
+                                "Plant diverse flowering plants to provide nectar and pollen",
+                                "Create overwintering sites with leaf litter or insect houses",
+                                "Maintain areas with aphids to sustain ladybug populations",
+                                "Encourage a balanced garden ecosystem"
+                            )
+                        }
+                        else -> conditionData.preventionTips
+                    }
+
+                    maintenanceTips.take(3).forEach { tip ->
+                        val tipView = LayoutInflater.from(this).inflate(
+                            R.layout.item_treatment_tip,
+                            maintenanceTipsContainer,
+                            false
+                        )
+                        tipView.findViewById<TextView>(R.id.tipText).text = "• ${limitTextLength(tip, 100)}"
+                        maintenanceTipsContainer.addView(tipView)
+                    }
                 }
             }
+
+            // If no maintenance tips, display N/A
+            if (!hasMaintenance || maintenanceTipsContainer.childCount == 0) {
+                val naText = TextView(this)
+                naText.text = "No maintenance tips available"
+                naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
+                naText.textSize = 10f
+                naText.setPadding(0, 8, 0, 8)
+                maintenanceTipsContainer.addView(naText)
+            }
+        } else {
+            // Hide maintenance section
+            maintenanceHeader.visibility = View.GONE
+            maintenanceScrollView.visibility = View.GONE
+            dividerMaintenance.visibility = View.GONE
         }
 
-        // If no prevention tips were found, display N/A
-        if (!hasPrevention) {
-            val naText = TextView(this)
-            naText.text = "N/A"
-            naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
-            naText.textSize = 10f
-            naText.setPadding(0, 8, 0, 8)
-            preventionTipsContainer.addView(naText)
-        }
+        // ------------------- PREVENTION & TREATMENT SECTIONS -------------------
+        // If only ladybugs are detected, hide prevention and treatment sections
+        if (onlyLadybugsDetected) {
+            // Hide prevention and treatment sections
+            preventionHeader.visibility = View.GONE
+            preventionScrollView.visibility = View.GONE
+            treatmentHeader.visibility = View.GONE
+            treatmentScrollView.visibility = View.GONE
+            divider1.visibility = View.GONE
+            divider2.visibility = View.GONE
+        } else {
+            // Show prevention and treatment sections for unhealthy plants
+            preventionHeader.visibility = View.VISIBLE
+            preventionScrollView.visibility = View.VISIBLE
+            treatmentHeader.visibility = View.VISIBLE
+            treatmentScrollView.visibility = View.VISIBLE
+            divider1.visibility = View.VISIBLE
+            divider2.visibility = View.VISIBLE
 
-        // ------------------- TREATMENT TIPS SECTION -------------------
-        // Clear existing views
-        treatmentTipsContainer.removeAllViews()
+            // Prevention tips
+            preventionTipsContainer.removeAllViews()
+            var hasPrevention = false
+            val isSingleCondition = totalConditions == 1
 
-        // For each condition, add its information
-        for ((condName, detections) in detectionsByCondition) {
-            val conditionData = PlantConditionData.conditions[condName]
-            if (conditionData != null) {
-                // Only add condition header if multiple conditions exist
-                if (!isSingleCondition) {
-                    val headerText = TextView(this)
-                    headerText.text = condName
-                    headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
-                    headerText.textSize = 12f
-                    headerText.setTypeface(null, Typeface.BOLD)
-                    headerText.setPadding(0, 8, 0, 8)
-                    treatmentTipsContainer.addView(headerText)
+            for ((condName, detections) in detectionsByCondition) {
+                // Skip healthy conditions and ladybugs
+                if (condName.startsWith("Healthy") || condName == "Hippodamia Variegata/Lady Bug") continue
+
+                val conditionData = PlantConditionData.conditions[condName]
+                if (conditionData != null && conditionData.preventionTips.isNotEmpty()) {
+                    hasPrevention = true
+
+                    // Add condition header for multiple conditions
+                    if (!isSingleCondition) {
+                        val headerText = TextView(this)
+                        headerText.text = condName
+                        headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
+                        headerText.textSize = 12f
+                        headerText.setTypeface(null, Typeface.BOLD)
+                        headerText.setPadding(0, 8, 0, 8)
+                        preventionTipsContainer.addView(headerText)
+                    }
+
+                    // Add prevention tips (limit to 2, truncate to 100 characters)
+                    conditionData.preventionTips.take(2).forEach { tip ->
+                        val tipView = LayoutInflater.from(this)
+                            .inflate(R.layout.item_treatment_tip, preventionTipsContainer, false)
+                        tipView.findViewById<TextView>(R.id.tipText).text = limitTextLength(tip, 100)
+                        preventionTipsContainer.addView(tipView)
+                    }
                 }
+            }
 
-                // Add treatment tips for this condition
-                if (conditionData.treatmentTips.isNotEmpty()) {
+            // If no prevention tips, display N/A
+            if (!hasPrevention) {
+                val naText = TextView(this)
+                naText.text = "No prevention tips available"
+                naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
+                naText.textSize = 10f
+                naText.setPadding(0, 8, 0, 8)
+                preventionTipsContainer.addView(naText)
+            }
+
+            // Treatment tips
+            treatmentTipsContainer.removeAllViews()
+            var hasTreatment = false
+
+            for ((condName, detections) in detectionsByCondition) {
+                // Skip healthy conditions and ladybugs
+                if (condName.startsWith("Healthy") || condName == "Hippodamia Variegata/Lady Bug") continue
+
+                val conditionData = PlantConditionData.conditions[condName]
+                if (conditionData != null && conditionData.treatmentTips.isNotEmpty()) {
+                    hasTreatment = true
+
+                    // Add condition header for multiple conditions
+                    if (!isSingleCondition) {
+                        val headerText = TextView(this)
+                        headerText.text = condName
+                        headerText.setTextColor(ContextCompat.getColor(this, android.R.color.black))
+                        headerText.textSize = 12f
+                        headerText.setTypeface(null, Typeface.BOLD)
+                        headerText.setPadding(0, 8, 0, 8)
+                        treatmentTipsContainer.addView(headerText)
+                    }
+
+                    // Add treatment tips (limit to 2, truncate to 100 characters)
                     conditionData.treatmentTips.take(2).forEach { tip ->
-                        val tipView = LayoutInflater.from(this).inflate(R.layout.item_treatment_tip, treatmentTipsContainer, false)
-                        tipView.findViewById<TextView>(R.id.tipText).text = tip
+                        val tipView = LayoutInflater.from(this)
+                            .inflate(R.layout.item_treatment_tip, treatmentTipsContainer, false)
+                        tipView.findViewById<TextView>(R.id.tipText).text = limitTextLength(tip, 100)
                         treatmentTipsContainer.addView(tipView)
                     }
-                } else {
-                    // If no treatment tips, add N/A
-                    val naText = TextView(this)
-                    naText.text = "N/A"
-                    naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
-                    naText.textSize = 10f
-                    naText.setPadding(16, 4, 0, 4)
-                    treatmentTipsContainer.addView(naText)
                 }
             }
-        }
 
-        // If no conditions had treatment tips, add a general N/A
-        if (treatmentTipsContainer.childCount == 0) {
-            val naText = TextView(this)
-            naText.text = "N/A"
-            naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
-            naText.textSize = 10f
-            naText.setPadding(0, 8, 0, 8)
-            treatmentTipsContainer.addView(naText)
+            // If no treatment tips, display N/A
+            if (!hasTreatment) {
+                val naText = TextView(this)
+                naText.text = "No treatment tips available"
+                naText.setTextColor(ContextCompat.getColor(this, R.color.dark_gray))
+                naText.textSize = 10f
+                naText.setPadding(0, 8, 0, 8)
+                treatmentTipsContainer.addView(naText)
+            }
         }
 
         // ------------------- MONITORING SECTION -------------------
-        // Configure the monitoring section based on scan type
         if (isRescan && selectedPlantId != null) {
             // This is a rescan of an existing plant - show Go to Management button
             monitoringSection.visibility = View.VISIBLE
-
-            // Hide the regular buttons
             setReminderButton.visibility = View.GONE
             taskCompleteButton.visibility = View.GONE
             addToCalendarButton.visibility = View.GONE
-
-            // Show the go to management button
             goToManagementButton.visibility = View.VISIBLE
 
-            // Set go to management button listener
             goToManagementButton.setOnClickListener {
                 val intent = Intent(this, PlantManagementActivity::class.java)
                 intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
-                intent.putExtra("SHOW_TREATMENT_PLAN", true) // Important: This ensures treatment plan is shown
+                intent.putExtra("SHOW_TREATMENT_PLAN", true)
                 startActivity(intent)
-                finish() // Close this activity
+                finish()
             }
         } else if (showMonitoringOptions && selectedPlantId != null) {
             // Regular scan for an existing plant
@@ -1181,12 +1323,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             taskCompleteButton.visibility = View.VISIBLE
             addToCalendarButton.visibility = View.GONE
 
-            // Set reminder button
             setReminderButton.setOnClickListener {
                 dialogShowDateTimePicker(primaryCondition)
             }
 
-            // Task complete button
             taskCompleteButton.setOnClickListener {
                 markTreatmentComplete(primaryCondition)
                 Toast.makeText(this, "Task marked as complete", Toast.LENGTH_SHORT).show()
@@ -1205,7 +1345,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             goToManagementButton.visibility = View.GONE
             addToCalendarButton.visibility = View.VISIBLE
 
-            // Add to calendar button - now shows dialog for multiple plants
             addToCalendarButton.setOnClickListener {
                 showAddMultiplePlantsDialog(detectionsByCondition)
             }
@@ -1221,7 +1360,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             if (selectedPlantId != null && isRescan) {
                 val intent = Intent(this, PlantManagementActivity::class.java)
                 intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
-                intent.putExtra("SHOW_TREATMENT_PLAN", true) // Important: Force show treatment plan
+                intent.putExtra("SHOW_TREATMENT_PLAN", true)
                 startActivity(intent)
                 finish()
             } else {
@@ -1232,13 +1371,12 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
         }
 
-        // Create and show the dialog
+        // Create and show dialog
         infoDialog = AlertDialog.Builder(this)
             .setView(dialogView)
             .setCancelable(true)
             .create()
 
-        // Handle dialog dismissal to restart camera if needed
         infoDialog?.setOnDismissListener {
             if (!isFinishing) {
                 startCamera()
@@ -1246,6 +1384,14 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
 
         infoDialog?.show()
+    }
+
+    private fun limitTextLength(text: String, maxLength: Int): String {
+        return if (text.length > maxLength) {
+            text.substring(0, maxLength) + "..."
+        } else {
+            text
+        }
     }
     // 6. Add dialog for creating a new plant group from multiple detections
     private fun showAddMultiplePlantsDialog(detectionsByCondition: Map<String, List<BoundingBox>>) {
@@ -1320,21 +1466,22 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         loadingDialog.dismiss()
 
         // Add a notice that counts will be appended automatically
-        val noticeText = dialogView.findViewById<TextView>(R.id.noticeText) ?: TextView(this).apply {
-            id = R.id.noticeText
-            textSize = 12f
-            setTextColor(ContextCompat.getColor(context, R.color.dark_gray))
-            text = "Plant count information will be added automatically to the name."
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                setMargins(16, 8, 16, 16)
+        val noticeText =
+            dialogView.findViewById<TextView>(R.id.noticeText) ?: TextView(this).apply {
+                id = R.id.noticeText
+                textSize = 12f
+                setTextColor(ContextCompat.getColor(context, R.color.dark_gray))
+                text = "Plant count information will be added automatically to the name."
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT
+                ).apply {
+                    setMargins(16, 8, 16, 16)
+                }
+                // Add to parent if it doesn't exist
+                val parent = plantNameInput.parent as? ViewGroup
+                parent?.addView(this, parent.indexOfChild(plantNameInput) + 1)
             }
-            // Add to parent if it doesn't exist
-            val parent = plantNameInput.parent as? ViewGroup
-            parent?.addView(this, parent.indexOfChild(plantNameInput) + 1)
-        }
 
         cancelButton.setOnClickListener {
             // Just dismiss the dialog
@@ -1352,11 +1499,12 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
 
             // Always append the plant count information if it's not already included
-            val finalPlantName = if (!basePlantName.contains("(") || !basePlantName.contains("plants")) {
-                "$basePlantName (${totalPlants} plants, ${totalConditions} conditions)"
-            } else {
-                basePlantName
-            }
+            val finalPlantName =
+                if (!basePlantName.contains("(") || !basePlantName.contains("plants")) {
+                    "$basePlantName (${totalPlants} plants, ${totalConditions} conditions)"
+                } else {
+                    basePlantName
+                }
 
             // Disable button to prevent multiple clicks
             addPlantButton.isEnabled = false
@@ -1388,7 +1536,11 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                             // Final cleanup of any duplicate events
                             cleanupDuplicateEvents(plantId)
 
-                            Toast.makeText(this, "Plant group added to monitoring with complete care schedule", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                this,
+                                "Plant group added to monitoring with complete care schedule",
+                                Toast.LENGTH_SHORT
+                            ).show()
 
                             // Dismiss dialogs
                             infoDialog?.dismiss()
@@ -1400,7 +1552,8 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                             startActivity(intent)
                             finish()
                         } else {
-                            Toast.makeText(this, "Failed to add plant group", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "Failed to add plant group", Toast.LENGTH_SHORT)
+                                .show()
                             addPlantButton.isEnabled = true
                             // Restart camera if we're not navigating away
                             startCamera()
@@ -1446,6 +1599,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         infoDialog?.dismiss()
         infoDialog = dialog
     }
+
     // 7. Create a method to add multiple plants as a group
     private fun addMultiplePlantsAsGroup(
         plantName: String,
@@ -1472,12 +1626,14 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
 
         // Create plant notes with detailed detection information
-        val conditionCounts = detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
-            "- $condition: ${detections.size} plants"
-        }
+        val conditionCounts =
+            detectionsByCondition.entries.joinToString("\n") { (condition, detections) ->
+                "- $condition: ${detections.size} plants"
+            }
 
         // Include details of all detected conditions in notes
-        val notes = "Plant group containing $totalPlants plants with ${detectionsByCondition.size} different conditions:\n$conditionCounts\n\nDetected on: ${Date()}"
+        val notes =
+            "Plant group containing $totalPlants plants with ${detectionsByCondition.size} different conditions:\n$conditionCounts\n\nDetected on: ${Date()}"
 
         // Create the plant record
         val plant = PlantDatabaseManager.Plant(
@@ -1493,7 +1649,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         // Add plant to database
         if (plantDatabaseManager.addPlant(plant)) {
-            Log.d("MainActivity", "Added plant group $plantId with ${detectionsByCondition.size} conditions")
+            Log.d(
+                "MainActivity",
+                "Added plant group $plantId with ${detectionsByCondition.size} conditions"
+            )
 
             // Create scan events for each condition
             for ((condition, detections) in detectionsByCondition) {
@@ -1517,11 +1676,13 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         return ""
     }
+
     override fun onPause() {
         super.onPause()
         // Stop camera when app goes into background
         stopCamera()
     }
+
     private fun openPlantManagementWithTreatmentPlan(plantId: String) {
         val intent = Intent(this, PlantManagementActivity::class.java)
         intent.putExtra("OPEN_PLANT_ID", plantId)
@@ -1612,7 +1773,14 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                         }
 
                         // IMPORTANT: Make sure we fully recreate the monthly plan - this is the key fix
-                        updateMonthlyPlan(plantId, updatedPlant, wasHealthy, isNowHealthy, isNewCondition, conditionName)
+                        updateMonthlyPlan(
+                            plantId,
+                            updatedPlant,
+                            wasHealthy,
+                            isNowHealthy,
+                            isNewCondition,
+                            conditionName
+                        )
 
                         // Final cleanup of any duplicate events that might have been created
                         cleanupDuplicateEvents(plantId)
@@ -1644,7 +1812,8 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                                     .setTitle("Plant Recovered!")
                                     .setMessage("Great news! Your ${updatedPlant.name} has recovered and is now healthy. All treatments have been removed.")
                                     .setPositiveButton("View Plant") { _, _ ->
-                                        val intent = Intent(this, PlantManagementActivity::class.java)
+                                        val intent =
+                                            Intent(this, PlantManagementActivity::class.java)
                                         intent.putExtra("OPEN_PLANT_ID", plantId)
                                         startActivity(intent)
                                         finish() // Close this activity
@@ -1668,13 +1837,15 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                                 // Show plant info dialog with rescan flag = true
                                 showPlantInfoDialog(conditionName, true, true)
 
-                                Toast.makeText(this, "Plant condition updated", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "Plant condition updated", Toast.LENGTH_SHORT)
+                                    .show()
                             }
                         }
                     } else {
                         runOnUiThread {
                             progressDialog.dismiss()
-                            Toast.makeText(this, "Failed to update plant", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "Failed to update plant", Toast.LENGTH_SHORT)
+                                .show()
                             // Restart camera on error
                             startCamera()
                         }
@@ -1715,7 +1886,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     ) {
         try {
             Log.d("MainActivity", "Updating monthly plan for plant $plantId")
-            Log.d("MainActivity", "Status changed: wasHealthy=$wasHealthy, isNowHealthy=$isNowHealthy")
+            Log.d(
+                "MainActivity",
+                "Status changed: wasHealthy=$wasHealthy, isNowHealthy=$isNowHealthy"
+            )
 
             // First, cancel ALL existing treatment tasks regardless of completion status
             // This is especially important when changing from diseased to healthy
@@ -1766,6 +1940,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             Log.e("MainActivity", "Error updating monthly plan: ${e.message}", e)
         }
     }
+
     private fun verifyNoTreatmentsForHealthyPlant(plantId: String) {
         try {
             val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
@@ -1778,16 +1953,24 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
             // If any treatments still exist, delete them
             if (remainingTreatments.isNotEmpty()) {
-                Log.d("MainActivity", "Found ${remainingTreatments.size} treatments for healthy plant - removing them")
+                Log.d(
+                    "MainActivity",
+                    "Found ${remainingTreatments.size} treatments for healthy plant - removing them"
+                )
 
                 for (event in remainingTreatments) {
                     plantDatabaseManager.deletePlantCareEvent(event.id)
                 }
             }
         } catch (e: Exception) {
-            Log.e("MainActivity", "Error verifying healthy plant has no treatments: ${e.message}", e)
+            Log.e(
+                "MainActivity",
+                "Error verifying healthy plant has no treatments: ${e.message}",
+                e
+            )
         }
     }
+
     private fun cancelFutureCareEvents(plantId: String) {
         val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
 
@@ -1813,6 +1996,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         Log.d("MainActivity", "Canceled ${futureEvents.size} future care events for plant $plantId")
     }
+
     private fun markRemainingTreatmentsAsCompleted(plantId: String) {
         val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
 
@@ -1834,7 +2018,11 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
     // Modifications to createCompletePlantCarePlan and createAutomaticTreatmentSchedule
 
-    private fun createCompletePlantCarePlan(plantId: String, plantType: String, wateringFrequency: Int) {
+    private fun createCompletePlantCarePlan(
+        plantId: String,
+        plantType: String,
+        wateringFrequency: Int
+    ) {
         Log.d("MainActivity", "Creating complete plant care plan for $plantId (Type: $plantType)")
 
         val calendar = Calendar.getInstance()
@@ -1870,7 +2058,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         }
 
         // Log what we're creating
-        Log.d("MainActivity", "Plant care plan details: Group=$isPlantGroup, Plants=$totalPlantsInGroup, Diseases=${diseaseConditions.keys}")
+        Log.d(
+            "MainActivity",
+            "Plant care plan details: Group=$isPlantGroup, Plants=$totalPlantsInGroup, Diseases=${diseaseConditions.keys}"
+        )
 
         // 1. Schedule watering for TODAY AND future days
         val todayWatering = Calendar.getInstance().apply {
@@ -1884,8 +2075,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             set(Calendar.SECOND, 0)
         }.time
 
-        plantDatabaseManager.scheduleWatering(plantId, todayWatering,
-            if (isPlantGroup) "Initial watering for all $totalPlantsInGroup plants" else "Initial watering")
+        plantDatabaseManager.scheduleWatering(
+            plantId, todayWatering,
+            if (isPlantGroup) "Initial watering for all $totalPlantsInGroup plants" else "Initial watering"
+        )
 
         // Future waterings
         val wateringCalendar = Calendar.getInstance()
@@ -1990,7 +2183,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         // 5. If there are disease conditions, schedule treatments
         if (diseaseConditions.isNotEmpty()) {
-            Log.d("MainActivity", "Creating treatments for ${diseaseConditions.size} disease conditions")
+            Log.d(
+                "MainActivity",
+                "Creating treatments for ${diseaseConditions.size} disease conditions"
+            )
 
             // Process each condition only ONCE to avoid duplicates
             val processedConditions = mutableSetOf<String>()
@@ -2009,8 +2205,14 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     checkForDuplicateTreatments(plantId, conditionName)
                 }
             }
-        } else if (!isPlantGroup && plant?.currentCondition != null && !plant.currentCondition.startsWith("Healthy")) {
-            Log.d("MainActivity", "Creating treatment for single plant with condition: ${plant.currentCondition}")
+        } else if (!isPlantGroup && plant?.currentCondition != null && !plant.currentCondition.startsWith(
+                "Healthy"
+            )
+        ) {
+            Log.d(
+                "MainActivity",
+                "Creating treatment for single plant with condition: ${plant.currentCondition}"
+            )
 
             // First check for duplicates
             checkForDuplicateTreatments(plantId, plant.currentCondition)
@@ -2044,6 +2246,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         Log.d("MainActivity", "Completed creating care plan for $plantId")
     }
+
     private fun cleanupDuplicateEvents(plantId: String) {
         Log.d("MainActivity", "Cleaning up all duplicate events for plant $plantId")
 
@@ -2072,7 +2275,9 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 // Parse conditions from notes
                 val notesLines = plant.notes.split("\n")
                 for (line in notesLines) {
-                    if (line.trim().startsWith("-") && line.contains(":") && line.contains("plants")) {
+                    if (line.trim()
+                            .startsWith("-") && line.contains(":") && line.contains("plants")
+                    ) {
                         val conditionName = line.substringAfter("-").substringBefore(":").trim()
                         if (!conditionName.contains("Healthy", ignoreCase = true)) {
                             conditions.add(conditionName)
@@ -2090,7 +2295,12 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             Log.e("MainActivity", "Error cleaning up duplicate events: ${e.message}", e)
         }
     }
-    private fun cleanupDuplicateEventsByType(plantId: String, allEvents: List<PlantDatabaseManager.PlantCareEvent>, eventType: String) {
+
+    private fun cleanupDuplicateEventsByType(
+        plantId: String,
+        allEvents: List<PlantDatabaseManager.PlantCareEvent>,
+        eventType: String
+    ) {
         try {
             // Get all events of this type that aren't completed
             val typeEvents = allEvents.filter {
@@ -2098,13 +2308,15 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             }
 
             // Group events by date (just the day, not time)
-            val eventsByDay = mutableMapOf<String, MutableList<PlantDatabaseManager.PlantCareEvent>>()
+            val eventsByDay =
+                mutableMapOf<String, MutableList<PlantDatabaseManager.PlantCareEvent>>()
 
             for (event in typeEvents) {
                 val cal = Calendar.getInstance()
                 cal.time = event.date
                 // Use year/month/day as key
-                val key = "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH)}-${cal.get(Calendar.DAY_OF_MONTH)}"
+                val key =
+                    "${cal.get(Calendar.YEAR)}-${cal.get(Calendar.MONTH)}-${cal.get(Calendar.DAY_OF_MONTH)}"
 
                 if (!eventsByDay.containsKey(key)) {
                     eventsByDay[key] = mutableListOf()
@@ -2123,7 +2335,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     // Delete the rest
                     for (i in 1 until sortedEvents.size) {
                         val deleteEvent = sortedEvents[i]
-                        Log.d("MainActivity", "Deleting duplicate $eventType on $day: ${deleteEvent.id}")
+                        Log.d(
+                            "MainActivity",
+                            "Deleting duplicate $eventType on $day: ${deleteEvent.id}"
+                        )
                         plantDatabaseManager.deletePlantCareEvent(deleteEvent.id)
                     }
 
@@ -2151,8 +2366,23 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             return
         }
 
+        // Determine what type of condition this is for user feedback and treatment styling
+        val conditionType = when {
+            conditionName.contains("(Diseased)") -> "Disease"
+            conditionName.contains("(Infested)") -> "Pest"
+            conditionName == "Hippodamia Variegata/Lady Bug" -> "Beneficial"
+            else -> ""
+        }
+
+        // Extract the condition name without the classification for display
+        val displayName = if (conditionName.contains("(")) {
+            conditionName.substringBefore("(").trim()
+        } else {
+            conditionName
+        }
+
         // Log the treatment tasks we're creating
-        Log.d("MainActivity", "Found ${condition.treatmentTasks.size} treatment tasks for $conditionName")
+        Log.d("MainActivity", "Found ${condition.treatmentTasks.size} treatment tasks for $displayName")
 
         // Create an urgent task for today (only ONE task)
         val urgentTask = condition.treatmentTasks.firstOrNull()
@@ -2161,7 +2391,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 add(Calendar.HOUR_OF_DAY, 1)
             }.time
 
-            val urgentTaskId = "urgent_treat_${plantId}_${conditionName}_${System.currentTimeMillis()}"
+            val urgentTaskId = "urgent_treat_${plantId}_${displayName}_${System.currentTimeMillis()}"
             val plantCountText = if (plantCount == 1) "(1 plant)" else "($plantCount plants)"
 
             val urgentTreatmentEvent = PlantDatabaseManager.PlantCareEvent(
@@ -2170,7 +2400,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 eventType = "Treat: $conditionName",
                 date = treatmentTime,
                 conditionName = conditionName,
-                notes = "URGENT: ${urgentTask.taskName} for $conditionName $plantCountText\n\n${urgentTask.description}\n\nMaterials: ${urgentTask.materials.joinToString(", ")}\n\nInstructions:\n${urgentTask.instructions.joinToString("\n- ", "- ")}",
+                notes = "URGENT: ${urgentTask.taskName} for $displayName $plantCountText\n\n${urgentTask.description}\n\nMaterials: ${urgentTask.materials.joinToString(", ")}\n\nInstructions:\n${urgentTask.instructions.joinToString("\n- ", "- ")}",
                 completed = false
             )
 
@@ -2196,7 +2426,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             scheduleDay.set(Calendar.SECOND, 0)
 
             val plantCountText = if (plantCount == 1) "(1 plant)" else "($plantCount plants)"
-            val taskId = "treatment_${plantId}_${conditionName}_${System.currentTimeMillis() + index}"
+            val taskId = "treatment_${plantId}_${displayName}_${System.currentTimeMillis() + index}"
 
             val treatmentEvent = PlantDatabaseManager.PlantCareEvent(
                 id = taskId,
@@ -2204,7 +2434,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 eventType = "Treat: $conditionName",
                 date = scheduleDay.time,
                 conditionName = conditionName,
-                notes = "${task.taskName} for $conditionName $plantCountText\n\n${task.description}\n\nMaterials: ${task.materials.joinToString(", ")}\n\nInstructions:\n${task.instructions.joinToString("\n- ", "- ")}",
+                notes = "${task.taskName} for $displayName $plantCountText\n\n${task.description}\n\nMaterials: ${task.materials.joinToString(", ")}\n\nInstructions:\n${task.instructions.joinToString("\n- ", "- ")}",
                 completed = false
             )
 
@@ -2222,7 +2452,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                 for (followUpIndex in 1..maxFollowUps) {
                     followUpCalendar.add(Calendar.DAY_OF_MONTH, task.scheduleInterval)
 
-                    val followUpId = "followup_${plantId}_${conditionName}_${System.currentTimeMillis() + followUpIndex * 100}"
+                    val followUpId = "followup_${plantId}_${displayName}_${System.currentTimeMillis() + followUpIndex * 100}"
                     val followUpEvent = PlantDatabaseManager.PlantCareEvent(
                         id = followUpId,
                         plantId = plantId,
@@ -2242,7 +2472,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         // Do one final check for duplicates after creation
         checkForDuplicateTreatments(plantId, conditionName)
 
-        Log.d("MainActivity", "Completed creating treatment schedule for $conditionName")
+        Log.d("MainActivity", "Completed creating treatment schedule for $displayName")
     }
 
     private fun startCamera() {
@@ -2254,10 +2484,17 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     }
 
     private fun bindCameraUseCases() {
-        val cameraProvider =
-            cameraProvider ?: throw IllegalStateException("Camera initialization failed.")
+        val cameraProvider = cameraProvider
+            ?: throw IllegalStateException("Camera initialization failed.")
 
-        val rotation = binding.viewFinder.display.rotation
+        // Use windowManager to get rotation if display is null
+        val rotation = try {
+            binding.viewFinder.display?.rotation
+                ?: windowManager.defaultDisplay.rotation
+        } catch (e: Exception) {
+            // Fallback to default rotation
+            Surface.ROTATION_0
+        }
 
         val cameraSelector = CameraSelector
             .Builder()
@@ -2272,9 +2509,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         imageAnalyzer = ImageAnalysis.Builder()
             .setTargetAspectRatio(AspectRatio.RATIO_4_3)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setTargetRotation(binding.viewFinder.display.rotation)
+            .setTargetRotation(rotation)
             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
             .build()
+
 
         imageAnalyzer?.setAnalyzer(cameraExecutor) { imageProxy ->
             val bitmapBuffer =
@@ -2368,7 +2606,21 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         val goToManagementButton =
             dialogView.findViewById<android.widget.Button>(R.id.goToManagementButton)
 
-        conditionTitle.text = condition.name
+        // Determine category from condition name for presentation
+        val categoryLabel = when {
+            conditionName.contains("(Diseased)") -> "(Disease)"
+            conditionName.contains("(Infested)") -> "(Pest)"
+            conditionName == "Hippodamia Variegata/Lady Bug" -> "(Beneficial insect)"
+            else -> ""
+        }
+
+        // Set title with proper labeling
+        conditionTitle.text = if (categoryLabel.isNotEmpty()) {
+            "${conditionName.substringBefore("(")} $categoryLabel"
+        } else {
+            conditionName
+        }
+
         conditionDescription.text = condition.description
 
         // Add prevention tips
@@ -2406,7 +2658,10 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             goToManagementButton.setOnClickListener {
                 val intent = Intent(this, PlantManagementActivity::class.java)
                 intent.putExtra("OPEN_PLANT_ID", selectedPlantId)
-                intent.putExtra("SHOW_TREATMENT_PLAN", true) // Important: This ensures treatment plan is shown
+                intent.putExtra(
+                    "SHOW_TREATMENT_PLAN",
+                    true
+                ) // Important: This ensures treatment plan is shown
                 startActivity(intent)
                 finish() // Close this activity
             }
@@ -2488,6 +2743,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         infoDialog?.show()
     }
+
     private fun showAddToCalendarDialog(conditionName: String) {
         stopCamera()
         try {
@@ -2633,7 +2889,8 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                                 startActivity(intent)
                                 finish()
                             } else {
-                                Toast.makeText(this, "Failed to add plant", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this, "Failed to add plant", Toast.LENGTH_SHORT)
+                                    .show()
                                 addPlantButton.isEnabled = true
                                 // Restart camera if we're not navigating away
                                 startCamera()
@@ -2695,6 +2952,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             Log.e(TAG, "Error stopping camera: ${e.message}")
         }
     }
+
     private fun dialogShowDateTimePicker(conditionName: String) {
         // Only proceed if we have a plant ID
         if (selectedPlantId == null) return
@@ -2814,17 +3072,33 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         dialog.show()
         infoDialog = dialog
     }
+
     private fun checkForDuplicateTreatments(plantId: String, conditionName: String) {
         Log.d("MainActivity", "Checking for duplicate treatments for $conditionName")
 
         try {
+            // Extract the condition name without the classification for better matching
+            val baseConditionName = if (conditionName.contains("(")) {
+                conditionName.substringBefore("(").trim()
+            } else {
+                conditionName
+            }
+
             // Get all events for this plant
             val allEvents = plantDatabaseManager.getPlantCareEvents(plantId)
 
             // Find all treatment events for this specific condition that are not completed
             val treatmentEvents = allEvents.filter { event ->
+                val eventConditionBase = if (event.conditionName?.contains("(") == true) {
+                    event.conditionName.substringBefore("(").trim()
+                } else {
+                    event.conditionName
+                }
+
                 (event.eventType == "Treat: $conditionName" ||
-                        (event.eventType == "Treatment" && event.conditionName == conditionName)) &&
+                        (event.eventType == "Treatment" && event.conditionName == conditionName) ||
+                        // Handle cases where the event might use the old or new naming scheme
+                        (event.eventType.startsWith("Treat:") && eventConditionBase == baseConditionName)) &&
                         !event.completed
             }
 
@@ -2868,8 +3142,14 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
             // Also check for follow-up events that might be duplicated
             val followUpEvents = allEvents.filter { event ->
+                val eventConditionBase = if (event.conditionName?.contains("(") == true) {
+                    event.conditionName.substringBefore("(").trim()
+                } else {
+                    event.conditionName
+                }
+
                 event.notes.contains("Follow-up") &&
-                        event.conditionName == conditionName &&
+                        (event.conditionName == conditionName || eventConditionBase == baseConditionName) &&
                         !event.completed
             }
 
@@ -2914,6 +3194,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             Log.e("MainActivity", "Error checking for duplicate treatments: ${e.message}", e)
         }
     }
+
     override fun onDestroy() {
         super.onDestroy()
 
@@ -2930,6 +3211,7 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
         infoDialog?.dismiss()
         infoDialog = null
     }
+
     override fun onResume() {
         super.onResume()
         if (allPermissionsGranted()) {
@@ -2952,7 +3234,6 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
             binding.overlay.clear()
         }
     }
-
 
 
     override fun onDetect(boundingBoxes: List<BoundingBox>, inferenceTime: Long) {
@@ -2984,16 +3265,44 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
                     currentDetections.clear() // First clear existing
                     currentDetections.addAll(validDetections)
 
-                    // Count total plants and conditions
-                    val totalPlants = validDetections.size
-                    val uniqueConditions = validDetections.map { it.clsName }.distinct().size
+                    // Count detections by category
+                    val healthyCount = validDetections.count {
+                        it.clsName.startsWith("Healthy")
+                    }
+                    val diseaseCount = validDetections.count {
+                        it.clsName.contains("(Diseased)")
+                    }
+                    val pestCount = validDetections.count {
+                        it.clsName.contains("(Infested)")
+                    }
+                    val beneficialCount = validDetections.count {
+                        it.clsName == "Hippodamia Variegata/Lady Bug"
+                    }
 
-                    // Use the highest confidence detection for display
-                    val highestConfBox = validDetections.maxByOrNull { it.cnf }
+                    // Build informative detection text
+                    val totalPlants = validDetections.size
+                    val categoryText = buildString {
+                        if (healthyCount > 0) append("$healthyCount healthy")
+
+                        if (diseaseCount > 0) {
+                            if (length > 0) append(", ")
+                            append("$diseaseCount diseased")
+                        }
+
+                        if (pestCount > 0) {
+                            if (length > 0) append(", ")
+                            append("$pestCount pest-infested")
+                        }
+
+                        if (beneficialCount > 0) {
+                            if (length > 0) append(", ")
+                            append("$beneficialCount w/beneficial insects")
+                        }
+                    }
 
                     binding.captureButton.isEnabled = true
                     binding.detectionText.text =
-                        "$totalPlants plants detected: $uniqueConditions conditions"
+                        "$totalPlants plants detected: $categoryText"
                     binding.detectionText.visibility = View.VISIBLE
                 } else {
                     binding.captureButton.isEnabled = false

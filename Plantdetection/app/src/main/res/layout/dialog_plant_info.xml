@@ -46,7 +46,7 @@
             android:id="@+id/monitoringTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Plant Monitoring"
+            android:text="Vegetable Health Monitoring"
             android:textColor="@android:color/black"
             android:textSize="16sp"
             android:textStyle="bold"
@@ -99,7 +99,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             android:background="@drawable/green_button_background"
-            android:text="Add to My Plants"
+            android:text="Add to My Vegetable"
             android:textColor="@android:color/white"
             android:visibility="gone"
             app:layout_constraintEnd_toEndOf="parent"
@@ -131,6 +131,48 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/monitoringSection" />
 
+    <!-- Maintenance and Care Section -->
+    <TextView
+        android:id="@+id/maintenanceHeader"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Maintenance and Care"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/divider1" />
+
+    <ScrollView
+        android:id="@+id/maintenanceScrollView"
+        android:layout_width="0dp"
+        android:layout_height="100dp"
+        android:layout_marginTop="8dp"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/maintenanceHeader">
+
+        <LinearLayout
+            android:id="@+id/maintenanceTipsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <View
+        android:id="@+id/dividerMaintenance"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:layout_marginTop="16dp"
+        android:background="#DDDDDD"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/maintenanceScrollView" />
+
+    <!-- Prevention Tips Section -->
     <TextView
         android:id="@+id/preventionHeader"
         android:layout_width="wrap_content"
@@ -141,9 +183,8 @@
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/divider1" />
+        app:layout_constraintTop_toBottomOf="@+id/dividerMaintenance" />
 
-    <!-- Simple ScrollView for prevention tips -->
     <ScrollView
         android:id="@+id/preventionScrollView"
         android:layout_width="0dp"
@@ -172,6 +213,7 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/preventionScrollView" />
 
+    <!-- Treatment Tips Section -->
     <TextView
         android:id="@+id/treatmentHeader"
         android:layout_width="wrap_content"
@@ -184,7 +226,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@+id/divider2" />
 
-    <!-- Simple ScrollView for treatment tips -->
     <ScrollView
         android:id="@+id/treatmentScrollView"
         android:layout_width="0dp"

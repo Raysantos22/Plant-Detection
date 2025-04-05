@@ -1,4 +1,4 @@
-package com.Plantdetection
+package com.PlantDetection
 
 import android.content.Intent
 import android.os.Bundle
@@ -75,57 +75,86 @@ class DetectableConditionsActivity : AppCompatActivity() {
             // Show conditions for the selected vegetable
             val conditions = when (selectedVegetable) {
                 "Tomato" -> mapOf(
-                    "Healthy Tomato" to PlantConditionData.conditions["Healthy Tomato"]!!,
-                    "Anthracnose" to PlantConditionData.conditions["Anthracnose"]!!,
-                    "Blossom End Rot" to PlantConditionData.conditions["Blossom End Rot"]!!,
-                    "Leaf Caterpillar" to PlantConditionData.conditions["Leaf Caterpillar"]!!,
-                    "Leaf Roller" to PlantConditionData.conditions["Leaf Roller"]!!,
-                    "Hippodamia Variegata" to PlantConditionData.conditions["Hippodamia Variegata"]!!,
-                    "Rice Water Weevil" to PlantConditionData.conditions["Rice Water Weevil"]!!
+                    "Healthy Plant" to PlantConditionData.conditions["Healthy Tomato"]!!,
+                    "Plant Diseases" to mapOf(
+                        "Anthracnose (Diseased)" to PlantConditionData.conditions["Anthracnose (Diseased)"]!!,
+                        "Blossom End Rot (Diseased)" to PlantConditionData.conditions["Blossom End Rot (Diseased)"]!!
+                    ),
+                    "Harmful Pests" to mapOf(
+                        "Aphids (Infested)" to PlantConditionData.conditions["Aphids (Infested)"]!!,
+                        "Cutworm (Infested)" to PlantConditionData.conditions["Cutworm (Infested)"]!!,
+                        "Fruit Fly (Infested)" to PlantConditionData.conditions["Fruit Fly (Infested)"]!!
+                    ),
+                    "Beneficial Insects" to mapOf(
+                        "Hippodamia Variegata/Lady Bug" to PlantConditionData.conditions["Hippodamia Variegata/Lady Bug"]!!
+                    )
                 )
                 "Eggplant" -> mapOf(
-                    "Healthy Eggplant" to PlantConditionData.conditions["Healthy Eggplant"]!!,
-                    "Collectotrichum rot" to PlantConditionData.conditions["Collectotrichum rot"]!!,
-                    "Melon thrips" to PlantConditionData.conditions["Melon thrips"]!!,
-                    "Leaf Caterpillar" to PlantConditionData.conditions["Leaf Caterpillar"]!!,
-                    "Leaf Roller" to PlantConditionData.conditions["Leaf Roller"]!!,
-                    "Hippodamia Variegata" to PlantConditionData.conditions["Hippodamia Variegata"]!!,
-                    "Rice Water Weevil" to PlantConditionData.conditions["Rice Water Weevil"]!!
+                    "Healthy Plant" to PlantConditionData.conditions["Healthy eggplant"]!!,
+                    "Plant Diseases" to mapOf(
+                        "Collectotrichum rot (Diseased)" to PlantConditionData.conditions["Collectotrichum rot (Diseased)"]!!,
+                        "Melon Thrips (Diseased)" to PlantConditionData.conditions["Melon Thrips (Diseased)"]!!
+                    ),
+                    "Harmful Pests" to mapOf(
+                        "Aphids (Infested)" to PlantConditionData.conditions["Aphids (Infested)"]!!,
+                        "Cutworm (Infested)" to PlantConditionData.conditions["Cutworm (Infested)"]!!,
+                        "Fruit Fly (Infested)" to PlantConditionData.conditions["Fruit Fly (Infested)"]!!
+                    ),
+                    "Beneficial Insects" to mapOf(
+                        "Hippodamia Variegata/Lady Bug" to PlantConditionData.conditions["Hippodamia Variegata/Lady Bug"]!!
+                    )
                 )
                 else -> mapOf()
             }
 
-            // Add conditions to the layout
-            for ((name, condition) in conditions) {
-                addConditionToLayout(binding.conditionsContainer, name, condition)
+            // Add conditions to the layout with organized sections
+            conditions.forEach { (sectionName, sectionContent) ->
+                // Add section header
+                addSectionHeader(binding.conditionsContainer, sectionName)
+
+                // Handle nested map for detailed sections
+                if (sectionContent is Map<*, *>) {
+                    (sectionContent as Map<String, PlantConditionData.PlantCondition>).forEach { (name, condition) ->
+                        addConditionToLayout(binding.conditionsContainer, name, condition)
+                    }
+                } else {
+                    // Handle single condition
+                    addConditionToLayout(binding.conditionsContainer, sectionName, sectionContent as PlantConditionData.PlantCondition)
+                }
             }
         } else {
-            // Show all conditions organized by plant type
+            // All conditions view
+            val allConditions = mapOf(
+                "Tomato Plants" to mapOf(
+                    "Healthy Tomato" to PlantConditionData.conditions["Healthy Tomato"]!!,
+                    "Anthracnose (Diseased)" to PlantConditionData.conditions["Anthracnose (Diseased)"]!!,
+                    "Blossom End Rot (Diseased)" to PlantConditionData.conditions["Blossom End Rot (Diseased)"]!!
+                ),
+                "Eggplant Plants" to mapOf(
+                    "Healthy eggplant" to PlantConditionData.conditions["Healthy eggplant"]!!,
+                    "Collectotrichum rot (Diseased)" to PlantConditionData.conditions["Collectotrichum rot (Diseased)"]!!,
+                    "Melon Thrips (Diseased)" to PlantConditionData.conditions["Melon Thrips (Diseased)"]!!
+                ),
+                "Common Pests" to mapOf(
+                    "Aphids (Infested)" to PlantConditionData.conditions["Aphids (Infested)"]!!,
+                    "Cutworm (Infested)" to PlantConditionData.conditions["Cutworm (Infested)"]!!,
+                    "Fruit Fly (Infested)" to PlantConditionData.conditions["Fruit Fly (Infested)"]!!
+                ),
+                "Beneficial Insects" to mapOf(
+                    "Hippodamia Variegata/Lady Bug" to PlantConditionData.conditions["Hippodamia Variegata/Lady Bug"]!!
+                )
+            )
 
-            // Add Tomato section header
-            addSectionHeader(binding.conditionsContainer, "Tomato Plants")
+            // Add all conditions with organized sections
+            allConditions.forEach { (sectionName, sectionContent) ->
+                // Add section header
+                addSectionHeader(binding.conditionsContainer, sectionName)
 
-            // Add Tomato conditions
-            addConditionToLayout(binding.conditionsContainer, "Healthy Tomato", PlantConditionData.conditions["Healthy Tomato"]!!)
-            addConditionToLayout(binding.conditionsContainer, "Anthracnose", PlantConditionData.conditions["Anthracnose"]!!)
-            addConditionToLayout(binding.conditionsContainer, "Blossom End Rot", PlantConditionData.conditions["Blossom End Rot"]!!)
-
-            // Add Eggplant section header
-            addSectionHeader(binding.conditionsContainer, "Eggplant Plants")
-
-            // Add Eggplant conditions
-            addConditionToLayout(binding.conditionsContainer, "Healthy Eggplant", PlantConditionData.conditions["Healthy Eggplant"]!!)
-            addConditionToLayout(binding.conditionsContainer, "Collectotrichum rot", PlantConditionData.conditions["Collectotrichum rot"]!!)
-            addConditionToLayout(binding.conditionsContainer, "Melon thrips", PlantConditionData.conditions["Melon thrips"]!!)
-
-            // Add Common Pests section header
-            addSectionHeader(binding.conditionsContainer, "Common Pests (Both Plants)")
-
-            // Add common pest conditions
-            addConditionToLayout(binding.conditionsContainer, "Leaf Caterpillar", PlantConditionData.conditions["Leaf Caterpillar"]!!)
-            addConditionToLayout(binding.conditionsContainer, "Leaf Roller", PlantConditionData.conditions["Leaf Roller"]!!)
-            addConditionToLayout(binding.conditionsContainer, "Hippodamia Variegata", PlantConditionData.conditions["Hippodamia Variegata"]!!)
-            addConditionToLayout(binding.conditionsContainer, "Rice Water Weevil", PlantConditionData.conditions["Rice Water Weevil"]!!)
+                // Add conditions for this section
+                (sectionContent as Map<String, PlantConditionData.PlantCondition>).forEach { (name, condition) ->
+                    addConditionToLayout(binding.conditionsContainer, name, condition)
+                }
+            }
         }
     }
 
@@ -173,19 +202,18 @@ class DetectableConditionsActivity : AppCompatActivity() {
     private fun getConditionImageResource(conditionName: String): Int {
         return when (conditionName) {
             "Healthy Tomato" -> R.drawable.htomato
-            "Healthy Eggplant" -> R.drawable.heggplant
-            "Anthracnose" -> R.drawable.anthracnose
-            "Blossom End Rot" -> R.drawable.blossom
-            "Collectotrichum rot" -> R.drawable.rot
-            "Melon thrips" -> R.drawable.melon
-            "Leaf Caterpillar" -> R.drawable.cater
-            "Leaf Roller" -> R.drawable.roller
-            "Hippodamia Variegata" -> R.drawable.hippodamia
-            "Rice Water Weevil" -> R.drawable.weevil
+            "Healthy eggplant" -> R.drawable.heggplant
+            "Anthracnose (Diseased)" -> R.drawable.anthracnose
+            "Blossom End Rot (Diseased)" -> R.drawable.blossom
+            "Collectotrichum rot (Diseased)" -> R.drawable.rot
+            "Melon Thrips (Diseased)" -> R.drawable.melon
+            "Aphids (Infested)" -> R.drawable.aphids
+            "Cutworm (Infested)" -> R.drawable.cutworm
+            "Fruit Fly (Infested)" -> R.drawable.fruitfly
+            "Hippodamia Variegata/Lady Bug" -> R.drawable.hippodamia
             else -> R.drawable.ic_plant_care
         }
     }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
             onBackPressed()

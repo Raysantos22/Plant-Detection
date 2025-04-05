@@ -24,7 +24,7 @@ class MissedTaskNotificationReceiver : BroadcastReceiver() {
         // Method to schedule daily missed task check
         fun scheduleDailyMissedTaskCheck(context: Context) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-            
+
             // Create intent for missed task check
             val intent = Intent(context, MissedTaskNotificationReceiver::class.java).apply {
                 action = ACTION_CHECK_MISSED_TASKS
@@ -33,37 +33,47 @@ class MissedTaskNotificationReceiver : BroadcastReceiver() {
             val pendingIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 PendingIntent.getBroadcast(
                     context,
-                    0,
+                    0, // Use a fixed request code
                     intent,
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             } else {
                 PendingIntent.getBroadcast(
                     context,
-                    0,
+                    0, // Use a fixed request code
                     intent,
                     PendingIntent.FLAG_UPDATE_CURRENT
                 )
             }
 
-            // Set to run every day at midnight
-            val calendar = Calendar.getInstance().apply {
+            // Use inexact repeating to reduce alarm count
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setInexactRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    getTomorrowMidnight().timeInMillis,
+                    AlarmManager.INTERVAL_DAY,
+                    pendingIntent
+                )
+            } else {
+                alarmManager.setRepeating(
+                    AlarmManager.RTC_WAKEUP,
+                    getTomorrowMidnight().timeInMillis,
+                    AlarmManager.INTERVAL_DAY,
+                    pendingIntent
+                )
+            }
+        }
+
+        private fun getTomorrowMidnight(): Calendar {
+            return Calendar.getInstance().apply {
                 timeInMillis = System.currentTimeMillis()
                 set(Calendar.HOUR_OF_DAY, 0)
                 set(Calendar.MINUTE, 0)
                 set(Calendar.SECOND, 0)
+                set(Calendar.MILLISECOND, 0)
                 add(Calendar.DAY_OF_YEAR, 1)
             }
-
-            // Schedule repeating alarm
-            alarmManager.setRepeating(
-                AlarmManager.RTC_WAKEUP, 
-                calendar.timeInMillis, 
-                AlarmManager.INTERVAL_DAY, 
-                pendingIntent
-            )
         }
-
         // Method to create notification channel
         fun createMissedTaskNotificationChannel(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {

@@ -20,8 +20,8 @@ object PlantConditionData {
     )
 
     val conditions = mapOf(
-        "Anthracnose" to PlantCondition(
-            "Anthracnose",
+        "Anthracnose (Diseased)" to PlantCondition(
+            "Anthracnose (Diseased)",
             "A fungal disease that causes dark, sunken lesions on fruits, stems, and leaves.",
             listOf(
                 "Use disease-free seeds and transplants",
@@ -89,8 +89,8 @@ object PlantConditionData {
                 )
             )
         ),
-        "Blossom End Rot" to PlantCondition(
-            "Blossom End Rot",
+        "Blossom End Rot (Diseased)" to PlantCondition(
+            "Blossom End Rot (Diseased)",
             "A physiological disorder caused by calcium deficiency, resulting in dark, sunken areas at the blossom end of fruits.",
             listOf(
                 "Maintain consistent soil moisture",
@@ -157,8 +157,8 @@ object PlantConditionData {
                 )
             )
         ),
-        "Collectotrichum rot" to PlantCondition(
-            "Collectotrichum rot",
+        "Collectotrichum rot (Diseased)" to PlantCondition(
+            "Collectotrichum rot (Diseased)",
             "A fungal disease causing circular sunken spots on fruits with pink spore masses.",
             listOf(
                 "Plant resistant varieties",
@@ -294,8 +294,8 @@ object PlantConditionData {
                 )
             )
         ),
-        "Healthy Eggplant" to PlantCondition(
-            "Healthy Eggplant",
+        "Healthy eggplant" to PlantCondition(
+            "Healthy eggplant",
             "Your eggplant is healthy! Here are some tips to maintain its health.",
             listOf(
                 "Water deeply and consistently",
@@ -362,150 +362,285 @@ object PlantConditionData {
                 )
             )
         ),
-        "Leaf Caterpillar" to PlantCondition(
-            "Leaf Caterpillar",
-            "Caterpillars that eat plant leaves, causing irregular holes and damage.",
+        "Aphids (Infested)" to PlantCondition(
+            "Aphids (Infested)",
+            "Small, soft-bodied insects that cluster on new growth and undersides of leaves, causing stunting, yellowing, and sticky honeydew residue.",
             listOf(
-                "Inspect plants regularly for eggs and young caterpillars",
-                "Encourage beneficial insects like wasps and ladybugs",
-                "Use row covers during peak moth activity",
-                "Apply neem oil as a preventative",
-                "Plant trap crops like dill or fennel nearby"
+                "Encourage beneficial insects like ladybugs and lacewings",
+                "Plant companion plants like marigolds, nasturtiums, or herbs",
+                "Avoid excessive nitrogen fertilizer which promotes tender growth",
+                "Use reflective mulch to confuse aphids",
+                "Regularly inspect plants for early detection"
             ),
             listOf(
-                "Handpick caterpillars off plants",
-                "Apply Bacillus thuringiensis (Bt) spray",
-                "Use insecticidal soap for young caterpillars",
-                "Apply spinosad for severe infestations",
-                "Introduce beneficial insects like trichogramma wasps"
+                "Spray plants forcefully with water to dislodge aphids",
+                "Apply insecticidal soap to affected areas",
+                "Use neem oil solution for persistent infestations",
+                "Introduce beneficial insects like ladybugs or lacewings",
+                "Apply diluted dish soap solution to affected areas"
             ),
             listOf(
                 TreatmentTask(
-                    "Manual Removal",
-                    "Handpick and remove caterpillars from plants",
+                    "Water Spray Treatment",
+                    "Forcefully spray plants with water to dislodge aphids",
                     1,
-                    listOf("Gloves", "Bucket of soapy water"),
+                    listOf("Garden hose with adjustable nozzle"),
                     listOf(
-                        "Inspect plants thoroughly, especially leaf undersides",
-                        "Look for caterpillars, eggs, and frass (droppings)",
-                        "Remove caterpillars by hand and drop into soapy water",
-                        "Crush or remove egg masses (often on leaf undersides)",
-                        "Repeat daily until infestation is controlled"
-                    )
-                ),
-                TreatmentTask(
-                    "Apply Bt Treatment",
-                    "Apply Bacillus thuringiensis spray for biological control",
-                    5,
-                    listOf("Bt spray (Bacillus thuringiensis)", "Sprayer"),
-                    listOf(
-                        "Mix Bt according to package directions",
-                        "Apply thoroughly to all plant surfaces, especially leaf undersides",
-                        "Apply in evening for best results (Bt breaks down in sunlight)",
-                        "Reapply after rainfall",
-                        "Note: Bt only affects caterpillars, not beneficial insects"
+                        "Adjust hose to medium-strong spray setting",
+                        "Target undersides of leaves where aphids congregate",
+                        "Spray in morning so plants can dry completely",
+                        "Repeat daily for 3-5 days for persistent infestations"
                     )
                 ),
                 TreatmentTask(
                     "Apply Insecticidal Soap",
-                    "Use insecticidal soap for additional control",
+                    "Treat plants with insecticidal soap to kill aphids on contact",
                     3,
-                    listOf("Insecticidal soap", "Sprayer"),
+                    listOf("Insecticidal soap", "Spray bottle"),
                     listOf(
-                        "Mix insecticidal soap according to label instructions",
-                        "Apply directly to caterpillars for best effect",
-                        "Cover all plant surfaces, focusing on leaf undersides",
-                        "Apply in early morning or evening, not during hot sun",
-                        "Repeat as needed according to product instructions"
+                        "Mix insecticidal soap according to package directions",
+                        "Spray all affected plant parts, especially leaf undersides",
+                        "Apply when temperatures are below 85°F to prevent leaf burn",
+                        "Repeat every 5-7 days until aphids are controlled"
                     )
                 ),
                 TreatmentTask(
-                    "Follow-up Monitoring",
-                    "Check for effectiveness and reapply treatments as needed",
-                    2,
-                    listOf("Magnifying glass (optional)", "Garden journal"),
+                    "Neem Oil Application",
+                    "Apply neem oil to disrupt aphid feeding and reproduction",
+                    7,
+                    listOf("Neem oil", "Spray bottle", "Mild soap (optional emulsifier)"),
                     listOf(
-                        "Inspect plants for new caterpillars or eggs",
-                        "Look for continued leaf damage",
-                        "Record effectiveness of treatments",
-                        "If infestation persists, consider spinosad or other organic treatments"
+                        "Mix 2 tsp neem oil and 1 tsp mild soap in 1 quart water",
+                        "Apply thoroughly to all plant surfaces, especially new growth",
+                        "Apply in evening or early morning to prevent leaf burn",
+                        "Repeat weekly for at least 3 applications"
+                    )
+                ),
+                TreatmentTask(
+                    "Monitor and Reapply",
+                    "Check plants for aphid population reduction and reapply treatments if necessary",
+                    3,
+                    listOf("Magnifying glass (optional)"),
+                    listOf(
+                        "Inspect new growth and leaf undersides for aphids",
+                        "Check for honeydew (sticky residue) or sooty mold",
+                        "Look for beneficial insects that may be controlling aphids",
+                        "Reapply treatments if aphid populations persist"
                     )
                 )
             )
         ),
-        "Leaf Roller" to PlantCondition(
-            "Leaf Roller",
-            "Small caterpillars that roll leaves and feed inside the shelter.",
+        "Cutworm (Infested)" to PlantCondition(
+            "Cutworm (Infested)",
+            "Soil-dwelling caterpillars that cut off plants at the soil line, primarily damaging young seedlings.",
             listOf(
-                "Remove plant debris in fall to eliminate overwintering sites",
-                "Encourage natural predators like birds and beneficial insects",
-                "Avoid excessive nitrogen fertilization",
-                "Monitor plants regularly",
-                "Use pheromone traps to monitor moth populations"
+                "Place protective collars around seedlings (toilet paper tubes work well)",
+                "Clear garden of debris where cutworms hide",
+                "Till soil 2-4 weeks before planting to expose cutworms",
+                "Plant after soil has warmed, as cutworms are more active in cool soils",
+                "Encourage natural predators like birds and beneficial insects"
             ),
             listOf(
-                "Prune and destroy infested leaves",
-                "Apply Bacillus thuringiensis (Bt) spray",
-                "Use spinosad-based insecticides",
-                "Apply horticultural oil to smother eggs",
-                "Introduce predatory insects like lacewings"
+                "Hand-pick cutworms at night when they're active",
+                "Apply diatomaceous earth around plant stems",
+                "Use Bacillus thuringiensis (Bt) for severe infestations",
+                "Create barriers with cardboard collars or aluminum foil",
+                "Apply beneficial nematodes to soil to target larvae"
             ),
             listOf(
                 TreatmentTask(
-                    "Remove Rolled Leaves",
-                    "Identify and remove leaves with caterpillars inside",
-                    2,
-                    listOf("Pruning shears", "Disposal bag"),
+                    "Night Inspection",
+                    "Inspect plants after dark to locate and remove cutworms",
+                    1,
+                    listOf("Flashlight", "Container with soapy water"),
                     listOf(
-                        "Identify rolled or webbed leaves (main indicator)",
-                        "Carefully cut off affected leaves",
-                        "Open rolls to confirm caterpillar presence",
-                        "Destroy removed leaves (don't compost)",
-                        "Check all plants in vicinity"
+                        "Search soil around damaged plants after sunset",
+                        "Look for C-shaped grayish-brown caterpillars",
+                        "Check 1-2 inches below soil surface near plant stems",
+                        "Drop collected cutworms in soapy water to eliminate them"
                     )
                 ),
                 TreatmentTask(
-                    "Apply Bt Spray",
-                    "Apply Bacillus thuringiensis for biological control",
+                    "Install Protective Collars",
+                    "Create physical barriers around plant stems",
+                    1,
+                    listOf("Cardboard tubes, aluminum foil, or plastic cups"),
+                    listOf(
+                        "Cut cardboard tubes into 3-inch sections",
+                        "Push collar 1 inch into soil around each plant stem",
+                        "Extend collar 2 inches above soil surface",
+                        "Ensure no gaps between collar and soil"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Diatomaceous Earth",
+                    "Create a protective barrier of diatomaceous earth",
                     5,
-                    listOf("Bt spray", "Sprayer"),
+                    listOf("Food-grade diatomaceous earth", "Duster or shaker container"),
                     listOf(
-                        "Mix Bt according to package directions",
-                        "Apply thoroughly to all plant surfaces",
-                        "Apply in evening for best results",
-                        "Focus especially on new growth and unaffected leaves",
-                        "Reapply after rainfall"
+                        "Apply a 2-inch wide ring around each plant",
+                        "Keep material dry - reapply after rain or irrigation",
+                        "Avoid breathing dust; wear a mask when applying",
+                        "Apply in evening when cutworms become active"
                     )
                 ),
                 TreatmentTask(
-                    "Apply Horticultural Oil",
-                    "Use horticultural oil to smother eggs and small larvae",
+                    "Bt Treatment",
+                    "Apply Bacillus thuringiensis for severe infestations",
                     7,
-                    listOf("Horticultural oil", "Sprayer"),
+                    listOf("Bt concentrate", "Sprayer", "Protective gear"),
                     listOf(
-                        "Mix oil according to product instructions",
-                        "Apply to all plant surfaces, ensuring complete coverage",
-                        "Apply in early morning before temperatures rise",
-                        "Do not apply when temperatures exceed 85°F",
-                        "Repeat every 7-10 days for 2-3 applications"
+                        "Mix Bt according to label directions",
+                        "Apply to soil around plant stems",
+                        "Apply in evening hours when cutworms feed",
+                        "Water lightly after application to activate Bt",
+                        "Reapply after heavy rain"
+                    )
+                )
+            )
+        ),
+        "Fruit Fly (Infested)" to PlantCondition(
+            "Fruit Fly (Infested)",
+            "Small flies that lay eggs in ripening fruits, causing decay and premature fruit drop.",
+            listOf(
+                "Harvest fruits as soon as they ripen",
+                "Remove and dispose of fallen or damaged fruits",
+                "Cover developing fruits with paper bags or fruit sleeves",
+                "Use yellow sticky traps to monitor populations",
+                "Maintain good garden sanitation by removing debris"
+            ),
+            listOf(
+                "Create fruit fly traps with apple cider vinegar or wine",
+                "Apply organic spinosad sprays to affected plants",
+                "Use floating row covers to protect plants",
+                "Apply kaolin clay to create protective barrier on fruits",
+                "Introduce parasitic wasps as biological control"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Remove Infested Fruits",
+                    "Remove all damaged or fallen fruits to break reproductive cycle",
+                    1,
+                    listOf("Garden gloves", "Sealed disposal bags"),
+                    listOf(
+                        "Inspect plants for fruits with tiny puncture marks",
+                        "Check for fruits with soft spots indicating larval feeding",
+                        "Remove all damaged, overripe, or fallen fruits",
+                        "Dispose in sealed bags or bury deeply (12+ inches)"
                     )
                 ),
                 TreatmentTask(
-                    "Monitor and Follow-up",
-                    "Check effectiveness and continue surveillance",
+                    "Set Up Traps",
+                    "Create traps to capture adult fruit flies",
+                    2,
+                    listOf("Plastic containers", "Apple cider vinegar", "Dish soap", "Plastic wrap"),
+                    listOf(
+                        "Fill containers with 1-inch apple cider vinegar",
+                        "Add 2-3 drops of dish soap to break surface tension",
+                        "Cover with plastic wrap and poke small holes",
+                        "Place traps near affected plants but not touching foliage",
+                        "Empty and refresh every 3-4 days"
+                    )
+                ),
+                TreatmentTask(
+                    "Apply Spinosad",
+                    "Treat plants with organic spinosad spray",
+                    7,
+                    listOf("Spinosad concentrate", "Sprayer", "Protective gear"),
+                    listOf(
+                        "Mix spinosad according to package directions",
+                        "Apply to fruit and foliage, focusing on developing fruits",
+                        "Apply in evening to minimize impact on beneficial insects",
+                        "Avoid spraying open flowers to protect pollinators",
+                        "Reapply after rain or every 7-10 days during peak season"
+                    )
+                ),
+                TreatmentTask(
+                    "Protective Covers",
+                    "Use physical barriers to protect developing fruits",
                     3,
+                    listOf("Paper bags", "Garden ties", "Row cover material"),
+                    listOf(
+                        "Cover individual fruits with paper bags when 2-3 inches developed",
+                        "Secure bags with garden ties or staples",
+                        "For smaller plants, use fine mesh row covers",
+                        "Ensure covers don't damage plants in wind or rain",
+                        "Remove bags just before harvest to allow final ripening"
+                    )
+                )
+            )
+        ),
+        "Hippodamia Variegata/Lady Bug" to PlantCondition(
+            "Hippodamia Variegata/Lady Bug",
+            "Beneficial ladybug species that feeds on aphids and other soft-bodied pests. These are beneficial insects that help control pest populations.",
+            listOf(
+                "Avoid broad-spectrum insecticides that harm beneficial insects",
+                "Plant diverse flowering plants to provide nectar and pollen",
+                "Create overwintering sites with leaf litter or insect houses",
+                "Maintain areas with aphids or other prey to sustain populations",
+                "Introduce purchased ladybugs in evening hours with water spray"
+            ),
+            listOf(
+                "No treatment needed - these are beneficial insects",
+                "Protect existing populations by avoiding chemical insecticides",
+                "Provide water sources during dry periods",
+                "Create habitat with diverse plantings and shelter areas",
+                "Document populations to track garden ecosystem health"
+            ),
+            listOf(
+                TreatmentTask(
+                    "Preserve Populations",
+                    "Protect and encourage beneficial ladybug populations",
+                    7,
+                    listOf("Garden journal", "Water mister"),
+                    listOf(
+                        "Avoid all insecticide use in areas with ladybugs",
+                        "Provide shallow water sources with landing platforms",
+                        "Document ladybug populations to track effectiveness",
+                        "Photograph larvae to distinguish from pest species"
+                    )
+                ),
+                TreatmentTask(
+                    "Create Habitat",
+                    "Enhance garden to support ladybug lifecycle",
+                    14,
+                    listOf("Native plant seeds", "Mulch", "Ladybug house (optional)"),
+                    listOf(
+                        "Plant diverse flowering plants like dill, fennel, and yarrow",
+                        "Create overwintering sites with rock piles or ladybug houses",
+                        "Leave some areas of garden unmulched for ground-dwelling species",
+                        "Maintain small patches of aphids as food source"
+                    )
+                ),
+                TreatmentTask(
+                    "Monitor Effectiveness",
+                    "Evaluate pest control provided by ladybug population",
+                    7,
                     listOf("Magnifying glass", "Garden journal"),
                     listOf(
-                        "Inspect new growth for signs of rolling",
-                        "Look for moth activity around plants in evening",
-                        "Record effectiveness of treatments",
-                        "If severe infestation continues, consider spinosad application"
+                        "Check plants for aphid populations",
+                        "Observe and document ladybug feeding behavior",
+                        "Count ladybug eggs, larvae, and adults to assess population",
+                        "Compare pest damage in areas with and without ladybugs"
+                    )
+                ),
+                TreatmentTask(
+                    "Supplemental Release",
+                    "Add purchased ladybugs if natural population insufficient",
+                    30,
+                    listOf("Purchased ladybugs", "Spray bottle", "Organic honey solution"),
+                    listOf(
+                        "Release ladybugs in evening hours to reduce dispersal",
+                        "Mist plants lightly before release",
+                        "Place ladybugs at base of infested plants",
+                        "Provide honey-water solution (1:10) on cotton balls as food source",
+                        "Create temporary mesh cover for 24-48 hours if possible"
                     )
                 )
             )
         ),
-        "Melon thrips" to PlantCondition(
-            "Melon thrips",
+        "Melon Thrips (Diseased)" to PlantCondition(
+            "Melon Thrips (Diseased)",
             "Tiny insects that suck plant sap, causing silvering, scarring, and distortion of leaves.",
             listOf(
                 "Use reflective mulch to deter thrips",
@@ -572,163 +707,6 @@ object PlantConditionData {
                         "Apply in evening to minimize impact on beneficial insects",
                         "Avoid applying near flowering plants when bees are active",
                         "Repeat according to product instructions, typically every 7-10 days"
-                    )
-                )
-            )
-        ),
-        "Rice Water Weevil" to PlantCondition(
-            "Rice Water Weevil",
-            "Beetles that feed on leaves and larvae that feed on roots, causing wilting and reduced vigor.",
-            listOf(
-                "Rotate crops annually",
-                "Maintain good drainage in growing areas",
-                "Time planting to avoid peak adult activity",
-                "Use floating row covers during adult flight periods",
-                "Plant trap crops around garden perimeter"
-            ),
-            listOf(
-                "Apply beneficial nematodes to soil",
-                "Use pyrethrin-based insecticides for adults",
-                "Flood and drain growing areas to disrupt larval development",
-                "Apply systemic insecticides as a last resort",
-                "Introduce predatory insects like ground beetles"
-            ),
-            listOf(
-                TreatmentTask(
-                    "Apply Beneficial Nematodes",
-                    "Introduce beneficial nematodes to soil to control larvae",
-                    14,
-                    listOf("Beneficial nematodes (Steinernema or Heterorhabditis species)", "Watering can"),
-                    listOf(
-                        "Purchase fresh nematodes from reliable supplier",
-                        "Mix according to package directions in cool water",
-                        "Apply to moist soil in evening or on cloudy day",
-                        "Water area before and after application",
-                        "Keep soil moist for at least two weeks after application"
-                    )
-                ),
-                TreatmentTask(
-                    "Apply Pyrethrin Spray",
-                    "Use pyrethrin spray to control adult weevils",
-                    5,
-                    listOf("Pyrethrin-based insecticide", "Sprayer"),
-                    listOf(
-                        "Mix pyrethrin according to label instructions",
-                        "Apply to plant foliage when adults are active (usually evening)",
-                        "Focus on leaf margins where feeding occurs",
-                        "Repeat application after rainfall",
-                        "Apply every 5-7 days during peak activity periods"
-                    )
-                ),
-                TreatmentTask(
-                    "Set up Row Covers",
-                    "Install floating row covers to prevent adult egg laying",
-                    1,
-                    listOf("Lightweight floating row cover", "Garden hoops or stakes", "Weights or soil"),
-                    listOf(
-                        "Drape row cover over plants, using hoops for support",
-                        "Secure edges with soil, rocks, or weights",
-                        "Ensure complete sealing around edges",
-                        "Leave enough slack for plant growth",
-                        "Remove temporarily for pollination if needed"
-                    )
-                ),
-                TreatmentTask(
-                    "Improve Drainage",
-                    "Modify soil and drainage to discourage larval development",
-                    7,
-                    listOf("Digging tools", "Organic matter or sand"),
-                    listOf(
-                        "Create raised beds or improve existing drainage",
-                        "Add organic matter to heavy clay soils",
-                        "Ensure water doesn't pool around plants",
-                        "Avoid overwatering which can encourage larvae",
-                        "Allow soil to dry slightly between waterings"
-                    )
-                )
-            )
-        ),
-        "Hippodamia Variegata" to PlantCondition(
-            "Hippodamia Variegata",
-            "Small, Hippodamia Variegata insects that feed on plant sap and excrete honeydew, leading to sooty mold.",
-            listOf(
-                "Use yellow sticky traps",
-                "Inspect new plants before introducing to garden",
-                "Use reflective mulches",
-                "Encourage natural predators like ladybugs and lacewings",
-                "Plant trap crops like nasturtiums nearby"
-            ),
-            listOf(
-                "Spray plants forcefully with water to dislodge insects",
-                "Apply insecticidal soap or neem oil",
-                "Use horticultural oils to smother eggs and nymphs",
-                "In severe cases, use imidacloprid or other systemic insecticides",
-                "Introduce parasitic wasps (Encarsia formosa)"
-            ),
-            listOf(
-                TreatmentTask(
-                    "Water Spray Treatment",
-                    "Use strong water spray to dislodge Hippodamia Variegata",
-                    2,
-                    listOf("Garden hose with spray nozzle"),
-                    listOf(
-                        "Adjust hose to strong spray setting",
-                        "Spray undersides of leaves forcefully",
-                        "Focus on areas with visible Hippodamia Variegata",
-                        "Perform in morning so leaves dry quickly",
-                        "Repeat every 2-3 days for at least a week"
-                    )
-                ),
-                TreatmentTask(
-                    "Apply Insecticidal Soap",
-                    "Use insecticidal soap for direct control",
-                    3,
-                    listOf("Insecticidal soap", "Sprayer"),
-                    listOf(
-                        "Mix soap according to package directions",
-                        "Apply thoroughly to all plant surfaces, especially leaf undersides",
-                        "Apply in early morning or evening, never in hot sun",
-                        "Ensure complete coverage for contact killing",
-                        "Repeat every 5-7 days for at least 3 applications"
-                    )
-                ),
-                TreatmentTask(
-                    "Apply Neem Oil",
-                    "Use neem oil as a natural insecticide and repellent",
-                    7,
-                    listOf("Neem oil", "Sprayer"),
-                    listOf(
-                        "Mix neem oil according to package directions",
-                        "Apply to all plant surfaces, especially leaf undersides",
-                        "Apply in early morning or evening, avoiding hot sun",
-                        "Focus on new growth where Hippodamia Variegata congregate",
-                        "Repeat weekly for at least 3 applications"
-                    )
-                ),
-                TreatmentTask(
-                    "Set Up Yellow Sticky Traps",
-                    "Use traps to monitor and reduce Hippodamia Variegata populations",
-                    5,
-                    listOf("Yellow sticky traps", "Wooden stakes or hangers"),
-                    listOf(
-                        "Hang yellow sticky traps at plant height",
-                        "Place near but not touching plants",
-                        "Use at least one trap per 2-3 plants",
-                        "Check traps regularly to monitor population",
-                        "Replace when surface becomes covered with insects"
-                    )
-                ),
-                TreatmentTask(
-                    "Clean Honeydew and Sooty Mold",
-                    "Remove honeydew and sooty mold from leaves",
-                    5,
-                    listOf("Mild soap solution", "Soft cloth", "Spray bottle"),
-                    listOf(
-                        "Mix mild soap solution (few drops in water)",
-                        "Gently wipe affected leaves to remove mold",
-                        "Rinse with clean water spray",
-                        "Remove severely affected leaves",
-                        "Treat underlying Hippodamia Variegata problem to prevent recurrence"
                     )
                 )
             )
