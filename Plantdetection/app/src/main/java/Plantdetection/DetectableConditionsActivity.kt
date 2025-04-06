@@ -7,16 +7,11 @@ import android.view.MenuItem
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.PlantDetection.LoadingActivity
-import com.PlantDetection.PlantConditionData
-import com.PlantDetection.R
 import com.PlantDetection.databinding.ActivityDetectableConditionsBinding
 
 class DetectableConditionsActivity : AppCompatActivity() {
     private lateinit var binding: ActivityDetectableConditionsBinding
-    private var selectedVegetable: String? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -26,37 +21,13 @@ class DetectableConditionsActivity : AppCompatActivity() {
         // Enable back button in action bar
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        // Get selected vegetable from intent (might be null)
-        selectedVegetable = intent.getStringExtra("SELECTED_VEGETABLE")
+        // Set activity title
+        title = "All Detectable Conditions"
 
-        // Set title based on whether a vegetable is selected
-        title = if (selectedVegetable != null) {
-            "Detectable Conditions for $selectedVegetable"
-        } else {
-            "All Detectable Conditions"
-        }
+        // Display all conditions
+        displayAllConditions()
 
-        // Display detectable conditions
-        displayDetectableConditions()
-
-        // Set start detection button listener
-        binding.startDetectionButton.setOnClickListener {
-            if (selectedVegetable != null) {
-                val intent = Intent(this, LoadingActivity::class.java)
-                intent.putExtra("SELECTED_VEGETABLE", selectedVegetable)
-                startActivity(intent)
-                finish()
-            } else {
-                // If no vegetable selected, show message to select vegetable first
-                Toast.makeText(
-                    this,
-                    "Please go back and select a vegetable first",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
-
-        // Update button text based on vegetable selection
+        // Set back button listener
         binding.startDetectionButton.apply {
             text = "BACK"
             setOnClickListener {
@@ -66,96 +37,85 @@ class DetectableConditionsActivity : AppCompatActivity() {
         }
     }
 
-    private fun displayDetectableConditions() {
+    private fun displayAllConditions() {
         // Clear the container first
         binding.conditionsContainer.removeAllViews()
 
-        // Check if a vegetable is selected
-        if (selectedVegetable != null) {
-            // Show conditions for the selected vegetable
-            val conditions = when (selectedVegetable) {
-                "Tomato" -> mapOf(
-                    "Healthy Plant" to PlantConditionData.conditions["Healthy Tomato"]!!,
-                    "Plant Diseases" to mapOf(
-                        "Anthracnose (Diseased)" to PlantConditionData.conditions["Anthracnose (Diseased)"]!!,
-                        "Blossom End Rot (Diseased)" to PlantConditionData.conditions["Blossom End Rot (Diseased)"]!!
-                    ),
-                    "Harmful Pests" to mapOf(
-                        "Aphids (Infested)" to PlantConditionData.conditions["Aphids (Infested)"]!!,
-                        "Cutworm (Infested)" to PlantConditionData.conditions["Cutworm (Infested)"]!!,
-                        "Fruit Fly (Infested)" to PlantConditionData.conditions["Fruit Fly (Infested)"]!!
-                    ),
-                    "Beneficial Insects" to mapOf(
-                        "Hippodamia Variegata/Lady Bug" to PlantConditionData.conditions["Hippodamia Variegata/Lady Bug"]!!
-                    )
-                )
-                "Eggplant" -> mapOf(
-                    "Healthy Plant" to PlantConditionData.conditions["Healthy eggplant"]!!,
-                    "Plant Diseases" to mapOf(
-                        "Collectotrichum rot (Diseased)" to PlantConditionData.conditions["Collectotrichum rot (Diseased)"]!!,
-                        "Melon Thrips (Diseased)" to PlantConditionData.conditions["Melon Thrips (Diseased)"]!!
-                    ),
-                    "Harmful Pests" to mapOf(
-                        "Aphids (Infested)" to PlantConditionData.conditions["Aphids (Infested)"]!!,
-                        "Cutworm (Infested)" to PlantConditionData.conditions["Cutworm (Infested)"]!!,
-                        "Fruit Fly (Infested)" to PlantConditionData.conditions["Fruit Fly (Infested)"]!!
-                    ),
-                    "Beneficial Insects" to mapOf(
-                        "Hippodamia Variegata/Lady Bug" to PlantConditionData.conditions["Hippodamia Variegata/Lady Bug"]!!
-                    )
-                )
-                else -> mapOf()
-            }
+        // Tomato Section
+        addSectionHeader(binding.conditionsContainer, "Tomato Plants")
 
-            // Add conditions to the layout with organized sections
-            conditions.forEach { (sectionName, sectionContent) ->
-                // Add section header
-                addSectionHeader(binding.conditionsContainer, sectionName)
+        // Healthy Tomato
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Healthy Tomato",
+            PlantConditionData.conditions["Healthy Tomato"]!!
+        )
 
-                // Handle nested map for detailed sections
-                if (sectionContent is Map<*, *>) {
-                    (sectionContent as Map<String, PlantConditionData.PlantCondition>).forEach { (name, condition) ->
-                        addConditionToLayout(binding.conditionsContainer, name, condition)
-                    }
-                } else {
-                    // Handle single condition
-                    addConditionToLayout(binding.conditionsContainer, sectionName, sectionContent as PlantConditionData.PlantCondition)
-                }
-            }
-        } else {
-            // All conditions view
-            val allConditions = mapOf(
-                "Tomato Plants" to mapOf(
-                    "Healthy Tomato" to PlantConditionData.conditions["Healthy Tomato"]!!,
-                    "Anthracnose (Diseased)" to PlantConditionData.conditions["Anthracnose (Diseased)"]!!,
-                    "Blossom End Rot (Diseased)" to PlantConditionData.conditions["Blossom End Rot (Diseased)"]!!
-                ),
-                "Eggplant Plants" to mapOf(
-                    "Healthy eggplant" to PlantConditionData.conditions["Healthy eggplant"]!!,
-                    "Collectotrichum rot (Diseased)" to PlantConditionData.conditions["Collectotrichum rot (Diseased)"]!!,
-                    "Melon Thrips (Diseased)" to PlantConditionData.conditions["Melon Thrips (Diseased)"]!!
-                ),
-                "Common Pests" to mapOf(
-                    "Aphids (Infested)" to PlantConditionData.conditions["Aphids (Infested)"]!!,
-                    "Cutworm (Infested)" to PlantConditionData.conditions["Cutworm (Infested)"]!!,
-                    "Fruit Fly (Infested)" to PlantConditionData.conditions["Fruit Fly (Infested)"]!!
-                ),
-                "Beneficial Insects" to mapOf(
-                    "Hippodamia Variegata/Lady Bug" to PlantConditionData.conditions["Hippodamia Variegata/Lady Bug"]!!
-                )
-            )
+        // Tomato Diseases
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Anthracnose (Diseased)",
+            PlantConditionData.conditions["Anthracnose (Diseased)"]!!
+        )
 
-            // Add all conditions with organized sections
-            allConditions.forEach { (sectionName, sectionContent) ->
-                // Add section header
-                addSectionHeader(binding.conditionsContainer, sectionName)
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Blossom End Rot (Diseased)",
+            PlantConditionData.conditions["Blossom End Rot (Diseased)"]!!
+        )
 
-                // Add conditions for this section
-                (sectionContent as Map<String, PlantConditionData.PlantCondition>).forEach { (name, condition) ->
-                    addConditionToLayout(binding.conditionsContainer, name, condition)
-                }
-            }
-        }
+        // Eggplant Section
+        addSectionHeader(binding.conditionsContainer, "Eggplant Plants")
+
+        // Healthy Eggplant
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Healthy eggplant",
+            PlantConditionData.conditions["Healthy eggplant"]!!
+        )
+
+        // Eggplant Diseases
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Collectotrichum rot (Diseased)",
+            PlantConditionData.conditions["Collectotrichum rot (Diseased)"]!!
+        )
+
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Melon Thrips (Diseased)",
+            PlantConditionData.conditions["Melon Thrips (Diseased)"]!!
+        )
+
+        // Common Pests Section
+        addSectionHeader(binding.conditionsContainer, "Common Pests")
+
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Aphids (Infested)",
+            PlantConditionData.conditions["Aphids (Infested)"]!!
+        )
+
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Cutworm (Infested)",
+            PlantConditionData.conditions["Cutworm (Infested)"]!!
+        )
+
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Fruit Fly (Infested)",
+            PlantConditionData.conditions["Fruit Fly (Infested)"]!!
+        )
+
+        // Beneficial Insects Section
+        addSectionHeader(binding.conditionsContainer, "Beneficial Insects")
+
+        addConditionToLayout(
+            binding.conditionsContainer,
+            "Hippodamia Variegata/Lady Bug",
+            PlantConditionData.conditions["Hippodamia Variegata/Lady Bug"]!!
+        )
     }
 
     private fun addSectionHeader(container: LinearLayout, title: String) {
@@ -193,7 +153,7 @@ class DetectableConditionsActivity : AppCompatActivity() {
             imageView.setImageResource(imageResourceId)
         } else {
             // Use a placeholder if no specific image is found
-            imageView.setImageResource(R.drawable.eggplant)
+            imageView.setImageResource(R.drawable.ic_plant_care)
         }
 
         container.addView(conditionView)
@@ -214,6 +174,7 @@ class DetectableConditionsActivity : AppCompatActivity() {
             else -> R.drawable.ic_plant_care
         }
     }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == android.R.id.home) {
             onBackPressed()
