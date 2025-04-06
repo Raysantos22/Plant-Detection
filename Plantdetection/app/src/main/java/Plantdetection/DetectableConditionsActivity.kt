@@ -42,7 +42,7 @@ class DetectableConditionsActivity : AppCompatActivity() {
         binding.conditionsContainer.removeAllViews()
 
         // Tomato Section
-        addSectionHeader(binding.conditionsContainer, "Tomato Plants")
+        addSectionHeader(binding.conditionsContainer, "Tomato")
 
         // Healthy Tomato
         addConditionToLayout(
@@ -65,7 +65,7 @@ class DetectableConditionsActivity : AppCompatActivity() {
         )
 
         // Eggplant Section
-        addSectionHeader(binding.conditionsContainer, "Eggplant Plants")
+        addSectionHeader(binding.conditionsContainer, "Eggplant")
 
         // Healthy Eggplant
         addConditionToLayout(
