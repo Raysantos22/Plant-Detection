@@ -41,7 +41,7 @@
             android:layout_marginBottom="16dp"
             android:text="Condition description goes here" />
 
-        <!-- Early Signs Section - Only visible for disease/pest conditions -->
+        <!-- Early Signs Section - Only visible for disease conditions -->
         <LinearLayout
             android:id="@+id/earlySignsSection"
             android:layout_width="match_parent"
@@ -79,6 +79,43 @@
                 android:scaleType="centerCrop"
                 android:src="@drawable/ic_plant_task_reminder"
                 android:contentDescription="Early Signs Image"/>
+        </LinearLayout>
+
+        <!-- Tips Section - For all plants (with dynamic header) -->
+        <LinearLayout
+            android:id="@+id/tipsSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="#E0E0E0"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="8dp"/>
+
+            <TextView
+                android:id="@+id/tipsHeaderText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:text="Tips"
+                android:textSize="16sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:id="@+id/tipsText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="16dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="16dp"
+                android:layout_marginBottom="16dp"
+                android:text="Tips will be listed here"
+                android:lineSpacingExtra="4dp"/>
         </LinearLayout>
     </LinearLayout>
 </androidx.cardview.widget.CardView>

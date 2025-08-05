@@ -102,7 +102,7 @@ class DetectableConditionsActivity : AppCompatActivity() {
             PlantConditionData.conditions["Hippodamia Variegata/Lady Bug"]!!)
 
         // Add Healthy Plants section
-        addSectionHeader(binding.conditionsContainer, "Healthy Plants")
+        addSectionHeader(binding.conditionsContainer, "Healthy Vegetables")
 
         // Add healthy plant conditions
         addConditionToLayout(binding.conditionsContainer, "Healthy Tomato",
@@ -147,6 +147,11 @@ class DetectableConditionsActivity : AppCompatActivity() {
         val earlySignsTextView = conditionView.findViewById<TextView>(R.id.earlySignsText)
         val earlySignsImageView = conditionView.findViewById<ImageView>(R.id.earlySignsImage)
 
+        // Tips section
+        val tipsSection = conditionView.findViewById<LinearLayout>(R.id.tipsSection)
+        val tipsHeaderTextView = conditionView.findViewById<TextView>(R.id.tipsHeaderText)
+        val tipsTextView = conditionView.findViewById<TextView>(R.id.tipsText)
+
         nameTextView.text = name
         descriptionTextView.text = condition.description
 
@@ -156,8 +161,9 @@ class DetectableConditionsActivity : AppCompatActivity() {
         imageView.setImageResource(imageResourceId)
 
         // Set early signs section visibility and content for disease conditions
-        if (!name.contains("Healthy", ignoreCase = true) && !name.contains("Lady Bug",  ignoreCase = true)
-            && !name.contains("Aphids",  ignoreCase = true)&& !name.contains("Fruit Fly",  ignoreCase = true) && !name.contains("Cutworm",  ignoreCase = true)) {
+        if (!name.contains("Healthy", ignoreCase = true) && !name.contains("Lady Bug", ignoreCase = true)
+            && !name.contains("Aphids", ignoreCase = true) && !name.contains("Fruit Fly", ignoreCase = true)
+            && !name.contains("Cutworm", ignoreCase = true)) {
 
             earlySignsSection.visibility = android.view.View.VISIBLE
 
@@ -172,9 +178,44 @@ class DetectableConditionsActivity : AppCompatActivity() {
             earlySignsSection.visibility = android.view.View.GONE
         }
 
+        // Format tips as bullet points
+        val tipsText = condition.preventionTips.joinToString("\n• ", "• ")
+
+        // Configure tips section based on condition type
+        when {
+            // For healthy plants, show Care Tips
+            name.contains("Healthy", ignoreCase = true) -> {
+                tipsHeaderTextView.text = "Care Tips"
+                tipsHeaderTextView.setTextColor(resources.getColor(R.color.app_dark_green, null))
+                tipsTextView.text = tipsText
+            }
+
+            // For pests, show Safety Tips
+            name.contains("Aphids", ignoreCase = true) ||
+                    name.contains("Fruit Fly", ignoreCase = true) ||
+                    name.contains("Cutworm", ignoreCase = true) -> {
+                tipsHeaderTextView.text = "Safety Tips"
+                tipsHeaderTextView.setTextColor(resources.getColor(R.color.orange, null))
+                tipsTextView.text = tipsText
+            }
+
+            // For lady bugs (beneficial insects), show Encouragement Tips
+            name.contains("Lady Bug", ignoreCase = true) -> {
+                tipsHeaderTextView.text = "Encouragement Tips"
+                tipsHeaderTextView.setTextColor(resources.getColor(R.color.app_dark_green, null))
+                tipsTextView.text = tipsText
+            }
+
+            // For diseases, show Prevention Tips
+            else -> {
+                tipsHeaderTextView.text = "Prevention Tips"
+                tipsHeaderTextView.setTextColor(resources.getColor(R.color.app_dark_green, null))
+                tipsTextView.text = tipsText
+            }
+        }
+
         container.addView(conditionView)
     }
-
     private fun getConditionImageResource(conditionName: String): Int {
         return when {
             conditionName.contains("Blossom End Rot", ignoreCase = true) -> R.drawable.blossom
@@ -191,7 +232,6 @@ class DetectableConditionsActivity : AppCompatActivity() {
             conditionName.contains("Healthy Okra", ignoreCase = true) -> R.drawable.hokra
             conditionName.contains("Healthy Bitter Gourd", ignoreCase = true) -> R.drawable.hamplaya
             conditionName.contains("Healthy Chili Pepper", ignoreCase = true) -> R.drawable.hsili
-
             else -> R.drawable.ic_plant_care
         }
     }
@@ -203,9 +243,6 @@ class DetectableConditionsActivity : AppCompatActivity() {
             conditionName.contains("Blossom Blight", ignoreCase = true) -> R.drawable.signokra
             conditionName.contains("Phytophthora", ignoreCase = true) -> R.drawable.signampalaya
             conditionName.contains("Anthracnose", ignoreCase = true) -> R.drawable.signsili
-//            conditionName.contains("Aphids", ignoreCase = true) -> R.drawable.melon
-//            conditionName.contains("Fruit Fly", ignoreCase = true) -> R.drawable.melon
-//            conditionName.contains("Cutworm", ignoreCase = true) -> R.drawable.melon
             else -> R.drawable.ic_plant_care
         }
     }
@@ -226,15 +263,6 @@ class DetectableConditionsActivity : AppCompatActivity() {
 
             conditionName.contains("Anthracnose", ignoreCase = true) ->
                 "Small, circular sunken spots on fruits that enlarge and develop pink spore masses in the center."
-
-//            conditionName.contains("Aphids", ignoreCase = true) ->
-//                "Clusters of tiny insects on new growth, curling of leaves, and sticky honeydew on plant surfaces."
-//
-//            conditionName.contains("Fruit Fly", ignoreCase = true) ->
-//                "Tiny puncture marks on fruit skin, premature fruit softening, and fruit deformation."
-//
-//            conditionName.contains("Cutworm", ignoreCase = true) ->
-//                "Young seedlings cut off at soil level, feeding damage on leaves near soil, and visible soil disturbance."
 
             else -> "No early signs information available."
         }
