@@ -35,6 +35,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.PlantDetection.Constants.LABELS_PATH
 import com.PlantDetection.Constants.MODEL_PATH
 import com.PlantDetection.databinding.ActivityMainBinding
+import java.io.File
 import java.util.Calendar
 import java.util.Date
 import java.util.concurrent.ExecutorService
@@ -66,6 +67,8 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
     private val currentDetections = mutableListOf<BoundingBox>()
 
 
+    // Replace the onCreate method in MainActivity with this:
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -81,8 +84,41 @@ class MainActivity : AppCompatActivity(), Detector.DetectorListener {
 
         cameraExecutor = Executors.newSingleThreadExecutor()
 
-        cameraExecutor.execute {
-            detector = Detector(baseContext, MODEL_PATH, LABELS_PATH, this)
+        // Check if files exist in internal storage
+        val modelFile = File(filesDir, "yolov11v8.tflite")
+        val labelsFile = File(filesDir, "labels1.txt")
+
+        if (modelFile.exists() && labelsFile.exists()) {
+            // Files exist, initialize detector
+            cameraExecutor.execute {
+                try {
+                    detector = Detector(
+                        baseContext,
+                        modelFile.absolutePath,
+                        labelsFile.absolutePath,
+                        this@MainActivity
+                    )
+                    Log.d("MainActivity", "Detector initialized successfully")
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Failed to initialize detector: ${e.message}", e)
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Failed to load model: ${e.message}", Toast.LENGTH_LONG).show()
+                        // Go back to loading activity to re-download
+                        val intent = Intent(this@MainActivity, LoadingActivity::class.java)
+                        intent.putExtra("SELECTED_VEGETABLE", selectedVegetable)
+                        startActivity(intent)
+                        finish()
+                    }
+                }
+            }
+        } else {
+            // Files don't exist, go back to loading activity
+            Toast.makeText(this, "Model files not found. Redirecting to download...", Toast.LENGTH_SHORT).show()
+            val intent = Intent(this, LoadingActivity::class.java)
+            intent.putExtra("SELECTED_VEGETABLE", selectedVegetable)
+            startActivity(intent)
+            finish()
+            return
         }
 
         if (allPermissionsGranted()) {

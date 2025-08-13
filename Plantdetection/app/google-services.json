@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "296888215275",
+    "project_id": "yolov11-model",
+    "storage_bucket": "yolov11-model.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:296888215275:android:079d388f2ea390ad3a40ae",
+        "android_client_info": {
+          "package_name": "com.PlantDetection"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBupJyiHNoHuR1A74I6Wp4l-BFHrGCBpdU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

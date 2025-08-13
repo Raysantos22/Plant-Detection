@@ -14,9 +14,13 @@ import org.tensorflow.lite.support.image.ImageProcessor
 import org.tensorflow.lite.support.image.TensorImage
 import org.tensorflow.lite.support.tensorbuffer.TensorBuffer
 import java.io.BufferedReader
+import java.io.File
+import java.io.FileInputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 
 class Detector(
     private val context: Context,
@@ -50,7 +54,8 @@ class Detector(
             }
         }
 
-        val model = FileUtil.loadMappedFile(context, modelPath)
+        // Load model from file path instead of assets
+        val model = loadModelFile(modelPath)
         interpreter = Interpreter(model, options)
 
         val inputShape = interpreter.getInputTensor(0)?.shape()
@@ -72,8 +77,31 @@ class Detector(
             numElements = outputShape[2]
         }
 
+        // Load labels from file path instead of assets
+        loadLabelsFromFile(labelPath)
+    }
+
+    private fun loadModelFile(modelPath: String): MappedByteBuffer {
+        val file = File(modelPath)
+        if (!file.exists()) {
+            throw IOException("Model file not found: $modelPath")
+        }
+
+        val inputStream = FileInputStream(file)
+        val fileChannel = inputStream.channel
+        val startOffset = 0L
+        val declaredLength = fileChannel.size()
+        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+    }
+
+    private fun loadLabelsFromFile(labelPath: String) {
         try {
-            val inputStream: InputStream = context.assets.open(labelPath)
+            val file = File(labelPath)
+            if (!file.exists()) {
+                throw IOException("Labels file not found: $labelPath")
+            }
+
+            val inputStream = FileInputStream(file)
             val reader = BufferedReader(InputStreamReader(inputStream))
 
             var line: String? = reader.readLine()
@@ -86,6 +114,7 @@ class Detector(
             inputStream.close()
         } catch (e: IOException) {
             e.printStackTrace()
+            throw e
         }
     }
 
@@ -108,7 +137,7 @@ class Detector(
             }
         }
 
-        val model = FileUtil.loadMappedFile(context, modelPath)
+        val model = loadModelFile(modelPath)
         interpreter = Interpreter(model, options)
     }
 
